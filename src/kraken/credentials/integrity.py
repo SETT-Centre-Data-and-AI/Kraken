@@ -1,0 +1,7 @@
+ALIAS = "alias"
+USERNAME = "username"
+PASSWORD = "password"
+PLATFORM = "platform"
+CONNECTION_STRING = "connection_string"
+DEFAULT_USERNAME_TOKEN = "DEFAULT_USERNAME"
+INTEGRATED_TOKEN = "integrated"

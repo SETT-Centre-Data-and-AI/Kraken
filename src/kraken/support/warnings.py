@@ -1,0 +1,2 @@
+class DuplicateColumnWarning(Warning):
+    pass
