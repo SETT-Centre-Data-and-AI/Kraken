@@ -77,6 +77,16 @@ class Connector(ABC, Generic[TConn, TCursor]):
         custom_credentials: Credentials | None = None,
         autocommit: bool = True,
         autoclose: bool = True,
+        isolation_level: (
+            Literal[
+                "SERIALIZABLE",
+                "REPEATABLE READ",
+                "READ COMMITTED",
+                "READ UNCOMMITTED",
+                "AUTOCOMMIT",
+            ]
+            | None
+        ) = None,
     ) -> None:
         self.credentials: Credentials = (
             custom_credentials
@@ -93,6 +103,16 @@ class Connector(ABC, Generic[TConn, TCursor]):
         self.feedback: bool = feedback
         self.autocommit: bool = autocommit
         self.autoclose: bool = autoclose
+        self.isolation_level: (
+            Literal[
+                "SERIALIZABLE",
+                "REPEATABLE READ",
+                "READ COMMITTED",
+                "READ UNCOMMITTED",
+                "AUTOCOMMIT",
+            ]
+            | None
+        ) = isolation_level
 
         self.engine: sa.Engine | None = None
         self.connection: TConn | None = None
@@ -284,25 +304,19 @@ class Connector(ABC, Generic[TConn, TCursor]):
                 raise QueryExecutionError(str(e)) from e
 
             dataframes = self.__fetch_data(
-                query_name=query_name, progress=progress_ctx, indent=indent
+                query_name=query_name,
+                progress=progress_ctx,
+                indent=indent,
+                clean_df=clean_df,
+                check_column_duplicates=check_column_duplicates,
             )
 
             self.__execute_finish(commit=commit, close=close)
 
-            processed_dataframes = []
-            for df in dataframes:
-                df = self.__process_dataframe(
-                    df=df,
-                    clean_df=clean_df,
-                    check_column_duplicates=check_column_duplicates,
-                )
-                if df is not None:
-                    processed_dataframes.append(df)
-
-            if len(processed_dataframes) == 1:
-                return processed_dataframes[0]
+            if len(dataframes) == 1:
+                return dataframes[0]
             else:
-                return processed_dataframes
+                return dataframes
 
     def upload(
         self,
@@ -430,7 +444,12 @@ class Connector(ABC, Generic[TConn, TCursor]):
             return [tuple(row) for row in self.cursor.fetchall()]
 
     def __fetch_data(
-        self, query_name: str, progress: Progress, indent: str = ""
+        self,
+        query_name: str,
+        progress: Progress,
+        indent: str = "",
+        clean_df: bool = True,
+        check_column_duplicates: bool = True,
     ) -> list[DataFrame]:
         dataframes = []
         set_count = 0
@@ -465,11 +484,26 @@ class Connector(ABC, Generic[TConn, TCursor]):
 
                 # Only add a DataFrame if it has columns (i.e., it's not just a USE/SET/etc)
                 if columns:
+                    progress.update_header(
+                        header=f"{indent}Query: {query_name} Processing  |"
+                    )
                     df = DataFrame(data=rows, columns=columns)
-                    dataframes.append(df)
+                    df = self.__process_dataframe(
+                        df=df,
+                        clean_df=clean_df,
+                        check_column_duplicates=check_column_duplicates,
+                    )
+
+                    if df is not None:
+                        dataframes.append(df)
 
             # Move to next result set if possible
-            if not self.multiset_supported or not self.cursor.nextset():
+            try:
+                if not self.multiset_supported or not self.cursor.nextset():
+                    break
+            except Exception:
+                # certain drivers like psycopg2 report multiset_supported
+                # but then fail on cursor.nextset() with a NotSupported error
                 break
 
         progress.update_header(header=f"{indent}Query: {query_name} Completed   |")
@@ -517,7 +551,9 @@ class SaConnector(
         Returns:
             Engine: SQLAlchemy Engine
         """
-        self.engine = sa.create_engine(url=self.connection_string)
+        self.engine = sa.create_engine(
+            url=self.connection_string, isolation_level=self.isolation_level
+        )
         return self.engine
 
     def is_connected(self) -> bool:
@@ -628,6 +664,16 @@ def create_connector(
     custom_credentials: Credentials | None = None,
     autocommit: bool = True,
     autoclose: bool = True,
+    isolation_level: (
+        Literal[
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "AUTOCOMMIT",
+        ]
+        | None
+    ) = None,
 ) -> Connector:
     """Creates Kraken Connector.
 
@@ -637,6 +683,9 @@ def create_connector(
         custom_credentials (Credentials): If a custom Credentials object is provided, Kraken will use this to connect rather fetching credentials.
         autocommit (bool): Whether the Connector commits queries by default. Overridable in each execute(). Defaults to True.
         autoclose (bool): Whether the Connector closes the connection after query. Overridable in each execute(). Defaults to True.
+        isolation_level (str | None): SQL Alchemy isolation level. Defaults to None. If errors are raised related to not being able to perform
+        queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT". This will override the ability to
+        commit and rollback using the Connector, so this should be handled within SQL.
 
     Returns:
         Connector: Kraken Connector class
@@ -662,4 +711,5 @@ def create_connector(
         custom_credentials=custom_credentials,
         autocommit=autocommit,
         autoclose=autoclose,
+        isolation_level=isolation_level,
     )

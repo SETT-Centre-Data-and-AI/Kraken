@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from kraken.classes.pack_lists import ResultList
 from kraken.exporting.result_export import export_results
@@ -25,6 +25,17 @@ def run(
     batch_size: int | None = None,
     parsing_feedback: bool = False,
     concurrent: bool = False,
+    encoding: str = "utf-8",
+    isolation_level: (
+        Literal[
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "AUTOCOMMIT",
+        ]
+        | None
+    ) = None,
     **kwargs: Any,
 ) -> ResultList:
     """
@@ -52,6 +63,10 @@ def run(
         -   delimiter (str, optional): If exporting to a delimited file format (like CSV), this is used as the delimiter. Defaults to ",".
         -   parsing_feedback (bool): If True, Kraken will print a summary report of the parsed queries. Defaults to False.
         -   concurrent (bool): If True, executes all SQL files concurrently. Queries within each SQL file will still execute sequentially. Defaults to False.
+        -   encoding (str): Encoding of SQL files. Defaults to "utf-8".
+        -   isolation_level (Literal["SERIALIZABLE", "REPEATABLE READ", "READ COMMITTED", "READ UNCOMMITTED", "AUTOCOMMIT"] | None): SQL Alchemy isolation level, overriding any and all --$Isolation_level flags in SQL files. Defaults to None. If errors are raised related
+            to not being able to perform queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT". This will override the ability to
+            commit and rollback using the Connector, so this should be handled within SQL.
 
     Raises:
         ValueError: Argument 'filepaths' can be left blank if run from a notebook, but from a python file this must be entered
@@ -67,6 +82,7 @@ def run(
         variables=variables,
         username=username,
         parsing_feedback=parsing_feedback,
+        encoding=encoding,
     )
     results = execute_sql(
         query_list=queries,
@@ -74,6 +90,7 @@ def run(
         clean_df=clean_df,
         batch_size=batch_size,
         concurrent=concurrent,
+        isolation_level=isolation_level,
     )
     if export_directory is not None:
         export_results(

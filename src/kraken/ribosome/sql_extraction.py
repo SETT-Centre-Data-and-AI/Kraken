@@ -26,6 +26,7 @@ def extract_sql(
     variables: dict = {},
     username: str | None = None,
     parsing_feedback: bool = False,
+    encoding: str = "utf-8",
 ) -> QueryList:
     """
     Summary:
@@ -38,6 +39,7 @@ def extract_sql(
         -   variables (dict): Dictionary of DEFINE/SET variables to override in the SQL execution
         -   username (str): If entered, Kraken can use a specific username to later execute these queries. Otherwise, it will later attempt to fetch a default username from credentials. Defaults to None.
         -   parsing_feedback (bool): If True, Kraken will print a summary report of the parsed queries. Defaults to False.
+        -   encoding (str): Encoding of SQL files. Defaults to "utf-8".
 
     Returns:
         list[Query]: list of queries (class = Query)
@@ -50,7 +52,9 @@ def extract_sql(
     # Load SQL Files
     readout.print("Extracting SQL Files...")
     filepaths = _load_filepaths(filepaths, ".sql")
-    sql_file_list = _create_sql_file_list(filepaths=filepaths, username=username)
+    sql_file_list = _create_sql_file_list(
+        filepaths=filepaths, username=username, encoding=encoding
+    )
     readout.print(f"  {len(sql_file_list)} files loaded")
 
     # Prepare Queries
@@ -96,17 +100,20 @@ def extract_sql(
 
 ### Helper: Create SQL Files List from filepaths ###
 def _create_sql_file_list(
-    filepaths: list[Path], username: str | None = None
+    filepaths: list[Path], username: str | None = None, encoding: str = "utf-8"
 ) -> list[SQLFile]:
     sql_file_list = []
     for filepath in filepaths:
         split_flag_warning_files = []
-        with open(filepath) as file:
+        with open(filepath, encoding=encoding) as file:
             filename = str(filepath.name).split(".")[0]
             raw_sql = file.read()
             db_alias = _extract_instruction(raw_sql, "database") or decode(
                 "DATABASE", "KRAKEN_DEFAULT"
             )
+            isolation_level = _extract_instruction(
+                raw_sql, "isolation_level"
+            ) or _extract_instruction(raw_sql, "isolationlevel")
             split_queries = _fetch_split_sql_behaviour(raw_sql, filepath)
 
             if db_alias is None:
@@ -129,6 +136,7 @@ def _create_sql_file_list(
                 raw_sql=raw_sql,
                 variables={},
                 split_queries=split_queries,
+                isolation_level=isolation_level,
             )
             sql_file_list.append(sql_file)
 
@@ -167,7 +175,7 @@ def _create_querys(sql_file: SQLFile, variables: dict = {}) -> list[Query]:
     # Creation of queries
     for i, query in enumerate(split_queries):
         backup_df_name = (
-            sql_file.filename if i == 0 else f"{sql_file.filename}_{i+1:02d}"
+            sql_file.filename if i == 0 else f"{sql_file.filename}_{i + 1:02d}"
         )
         df_name = _extract_instruction(query, "dataframe") or backup_df_name
         query_list.append(
@@ -179,6 +187,7 @@ def _create_querys(sql_file: SQLFile, variables: dict = {}) -> list[Query]:
                 df_name=df_name,
                 sql=query,
                 parsing_report=parser.summary_report,
+                isolation_level=sql_file.isolation_level,
             )
         )
 

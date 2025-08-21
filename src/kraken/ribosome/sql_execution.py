@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
+from typing import Literal
 
 from pandas import DataFrame
 
@@ -24,6 +25,16 @@ def execute(
     username: str | None = None,
     batch_size: int | None = None,
     clean_df: bool = True,
+    isolation_level: (
+        Literal[
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "AUTOCOMMIT",
+        ]
+        | None
+    ) = None,
 ) -> DataFrame | list[DataFrame]:
     """
     Executes entered SQL against a given database alias and returns DataFrame of results, if applicable.
@@ -42,6 +53,9 @@ def execute(
         -   batch_size (int): Downloads rows in batches. Use `batch_size=0` to fetch all data without batching.
         -   clean_df (bool): Checks DataFrame after pandas generation and applies cleaning, including converting
             float64 to Int64 if applicable (recommended).
+        -   isolation_level (Literal["SERIALIZABLE", "REPEATABLE READ", "READ COMMITTED", "READ UNCOMMITTED", "AUTOCOMMIT"] | None): SQL Alchemy isolation level. Defaults to None. If errors are raised related to not being able to perform
+            queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT". This will override the ability to
+            commit and rollback using the Connector, so this should be handled within SQL.
 
     Returns:
         Results (DataFrame): Results of query (if data returned)
@@ -58,7 +72,9 @@ def execute(
 
     df = None
     query_name = f"'{query_name}'" if query_name else None
-    connector = create_connector(alias=alias, username=username)
+    connector = create_connector(
+        alias=alias, username=username, isolation_level=isolation_level
+    )
     connector.connect(allow_feedback=False)
     df = connector.execute(
         query=query,
@@ -74,12 +90,12 @@ def execute(
 
 def create_db_sql_mapping(
     query_list: QueryList,
-) -> dict[tuple[Path, str, str | None], QueryList]:
+) -> dict[tuple[Path, str, str | None, str | None], QueryList]:
     mapping: dict[tuple[Path, str, str | None], QueryList] = {}
 
     for query in query_list:
         mapping.setdefault(
-            (query.filepath, query.filename, query.db_alias),
+            (query.filepath, query.filename, query.db_alias, query.isolation_level),
             [],  # type: ignore[arg-type]
         ).append(query)
 
@@ -92,6 +108,16 @@ def execute_sql(
     clean_df: bool = True,
     batch_size: int | None = None,
     concurrent: bool = False,
+    isolation_level: (
+        Literal[
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "AUTOCOMMIT",
+        ]
+        | None
+    ) = None,
 ) -> ResultList:
     """
     Summary:
@@ -105,6 +131,9 @@ def execute_sql(
         clean_df (bool): Checks each DataFrame after pandas generation and applies cleaning, including converting float64 to Int64 if applicable (recommended).
         batch_size (int): Downloads rows in batches. Use `batch_size=0` to fetch all data without batching.
         concurrent (bool): If True, executes all SQL files concurrently. Queries within each SQL file will still execute sequentially. Defaults to False.
+        isolation_level (Literal["SERIALIZABLE", "REPEATABLE READ", "READ COMMITTED", "READ UNCOMMITTED", "AUTOCOMMIT"] | None): SQL Alchemy isolation level, overriding any and all --$Isolation_level flags in SQL files. Defaults to None. If errors are raised related
+        to not being able to perform queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT". This will override the ability to
+        commit and rollback using the Connector, so this should be handled within SQL.
 
     Returns:
         ResultList: List of Results
@@ -119,6 +148,7 @@ def execute_sql(
         clean_df=clean_df,
         batch_size=batch_size,
         concurrent=concurrent,
+        isolation_level=isolation_level,
     )
 
     # Check for Duplicates #
@@ -149,6 +179,16 @@ def __execute_all_queries(
     clean_df: bool,
     batch_size: int | None,
     concurrent: bool = False,
+    isolation_level: (
+        Literal[
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "AUTOCOMMIT",
+        ]
+        | None
+    ) = None,
 ) -> ResultList:
     result_list = ResultList()
     total_queries = sum(len(query_list) for query_list in db_sql_mapping.values())
@@ -157,11 +197,11 @@ def __execute_all_queries(
     concurrent_progress = None
 
     def _process_sql_file(
-        file_key: tuple[Path, str, str | None],
+        file_key: tuple[Path, str, str | None, str | None],
         query_list: QueryList,
         concurrent: bool = False,
     ) -> list[Result]:
-        (_, filename, db_alias) = file_key
+        (_, filename, db_alias, file_isolation_level) = file_key
         results = []
 
         text = (
@@ -178,7 +218,11 @@ def __execute_all_queries(
 
         max_df_name_length = max(len(query.df_name) for query in query_list) + 3
         start = datetime.now()
-        connector = create_connector(alias=db_alias, username=username)
+        connector = create_connector(
+            alias=db_alias,
+            username=username,
+            isolation_level=isolation_level or file_isolation_level,
+        )
         if not concurrent:
             readout.print(
                 f"connected to '{connector.alias}' ({calculate_runtime(start=start).message})"

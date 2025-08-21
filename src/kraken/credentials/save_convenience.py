@@ -161,7 +161,7 @@ def save_connection_Cache(
     server: bool,
     default: bool = False,
     autosave: bool = False,
-    driver="{InterSystems ODBC}",
+    driver: str = "{InterSystems ODBC}",
 ) -> None:
     """
     Save an Intersystems Cache database connection string under a callable alias and username.

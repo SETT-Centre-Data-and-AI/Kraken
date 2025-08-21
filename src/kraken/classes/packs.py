@@ -20,6 +20,16 @@ class SQLFile:
     variables: dict[str, str]
     split_queries: bool = True
     parsing_report: str | None = None
+    isolation_level: (
+        Literal[
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "AUTOCOMMIT",
+        ]
+        | None
+    ) = None
 
     def copy(self, deep: bool = True) -> "SQLFile":
         """Copies the SQLFile.
@@ -40,6 +50,16 @@ class Query:
     db_alias: str | None = None
     platform: str | None = None
     parsing_report: str | None = None
+    isolation_level: (
+        Literal[
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "AUTOCOMMIT",
+        ]
+        | None
+    ) = None
 
     def __init__(
         self,
@@ -50,6 +70,16 @@ class Query:
         db_alias: str | None = None,
         platform: str | None = None,
         parsing_report: str | None = None,
+        isolation_level: (
+            Literal[
+                "SERIALIZABLE",
+                "REPEATABLE READ",
+                "READ COMMITTED",
+                "READ UNCOMMITTED",
+                "AUTOCOMMIT",
+            ]
+            | None
+        ) = None,
     ):
         self.filename: str = filename
         self.df_name: str = df_name
@@ -58,6 +88,16 @@ class Query:
         self.db_alias: str = db_alias
         self.platform: str = platform
         self.parsing_report: str = parsing_report
+        self.isolation_level: (
+            Literal[
+                "SERIALIZABLE",
+                "REPEATABLE READ",
+                "READ COMMITTED",
+                "READ UNCOMMITTED",
+                "AUTOCOMMIT",
+            ]
+            | None
+        ) = isolation_level
 
     def __repr__(self) -> str:
         """
@@ -80,6 +120,8 @@ class Query:
             filepath=self.filepath,
             db_alias=self.db_alias,
             platform=self.platform,
+            parsing_report=self.parsing_report,
+            isolation_level=self.isolation_level,
         )
 
 

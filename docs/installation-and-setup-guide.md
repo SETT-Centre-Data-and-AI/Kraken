@@ -9,7 +9,7 @@
 ### Via PyPI
 Execute:
 ```
-pip install data-kraken
+pip install datakraken
 ```
 
 ### Via GitHub

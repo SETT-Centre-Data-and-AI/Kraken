@@ -21,7 +21,7 @@ Wrapping around packages like `keyring`, `sqlalchemy`, `pyodbc`, `pandas`, `matp
 
 # Quickstart Example
 ```
-pip install data-kraken
+pip install datakraken
 ```
 
 ```py

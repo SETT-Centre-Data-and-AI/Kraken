@@ -1,7 +1,7 @@
 # read version from installed package
 from importlib.metadata import version
 
-__version__ = version("kraken")
+__version__ = version("datakraken")
 
 from kraken.analysis.data_manipulation import check_duplicates, examine  # noqa: F401
 from kraken.classes.pack_lists import (

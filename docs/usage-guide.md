@@ -5,6 +5,7 @@ The following examples will use a Jupyter Notebook, imaginary SQL, and a MSSQL d
  - [Executing SQL Directly](#executing_sql_directly)
  - [Executing SQL Files & Exporting Results](#executing_sql_files)
  - [Executing SQL Files Without Splitting Queries](#executing_without_splitting)
+ - [Setting Isolation Level](#setting_isolation_level)
  - [Inspecting DataFrames](#inspecting_dataframes)
  - [Running the Ribosome](#running_ribosome)
  - [Extracting Spreadsheets](#extracting_spreadsheets)
@@ -140,6 +141,53 @@ Note two important points:
  - this behaviour will only work if the database platform itself supports it (e.g. this will not not work with Oracle databases).
  - because Kraken is not splitting queries, assigning names, and then executing them one by one - only a single `--$Dataframe` flag can be assigned (with any returned DataFrames beyond the first being assigned numbering accordingly). If multiple such flags are detected when not splitting queries, Kraken will use the first and continue, but warn the user.
 
+## Setting Isolation Level <a id="setting_isolation_level"></a>
+By default, all connections will set an isolation level according to database/driver defaults. If the isolation level needs to be controlled, the `--$Isolation_level` flag can be used in a SQL file (underscore is optional). Alternatively, the `isolation_level` argument can be passed to:
+ - `run()`
+ - `execute_sql()`
+ - `create_connector()`
+
+For example if experiencing errors like 'operation cannot be performed within a transaction', `--$Isolation_level=AUTOCOMMIT` (SQL) or `isolation_level='AUTOCOMMIT'` (argument) could be used. This behaviour will only work for SQL Alchemy driven connections. If used in BOTH the SQL File (flag) and in `run()` or `execute_sql()` (passed as arguments), the latter will override the former.
+
+When used at the `Connector` level, commit behaviour may not be controlled with `commit()` and `rollback()`, depending on the isolation level chosen.
+
+Here's an example using a Microsoft Azure Synapse SQL Data Warehouse that would fail without specifying the isolation level:
+
+```sql
+--$Database = BEDROCKDEV
+--$Dataframe = CreateTestTable
+--$Split=FALSE
+--$IsolationLevel=AUTOCOMMIT
+
+IF OBJECT_ID('rds.test_table') IS NOT NULL
+    DROP TABLE rds.test_table;
+;
+
+IF OBJECT_ID('rds.test_table', N'U') IS NULL
+BEGIN
+
+    CREATE TABLE test_table
+    (
+        id INT NOT NULL,
+        name NVARCHAR(100),
+        created_at DATETIME
+    )
+    WITH
+    (
+        DISTRIBUTION = ROUND_ROBIN,
+        CLUSTERED INDEX
+        (
+            [id] ASC
+        )
+    )
+
+END
+
+IF OBJECT_ID('rds.test_table') IS NOT NULL
+    DROP TABLE rds.test_table;
+;
+```
+
 ## Inspecting DataFrames<a id="inspecting_dataframes"></a>
 
 The `results` variable we defined in the previous block is a list of the results from the SQL queries, and each is a special class called a `Result`. This allows elements of the individual `Result` objects to be inspected by calling their index and element names:
@@ -213,7 +261,7 @@ Kraken can also upload data to databases:
 data_to_upload = results.get("Diagnoses").df
 
 # Now, let's upload it:
-kraken.upload("RESEARCH", df = data_to_upload, schema="dbo", table_name="KRAKEN_UPLOAD_TEST")
+kraken.upload("RESEARCH", df = data_to_upload, schema="dbo", table="KRAKEN_UPLOAD_TEST")
 ```
 
 Try to run that again, and you'll see that an kraken recognises a conflict because the table already exists and asks you what to do, with a few options provided.
@@ -225,11 +273,11 @@ To set automatic overwrite behaviour, you can use the `if_table_exists` argument
 data_to_upload = results.get("Diagnoses").df
 
 # Now, let's upload it with auto-overwrite behaviour:
-kraken.upload_dataframe(
+kraken.upload(
     "RESEARCH",
     df=data_to_upload,
     schema="dbo",
-    table_name="KRAKEN_UPLOAD_TEST",
+    table="KRAKEN_UPLOAD_TEST",
     if_table_exists="append",
 )
 ```
@@ -241,8 +289,8 @@ If a database service supports multiple database (such as SQL Server, where the 
 data_to_upload = results.get("Pathology").df
 
 # Now, let's upload it, specifying a particular datbase:
-kraken.upload_dataframe(
-    "RESEARCH", df=data_to_upload, schema="testing.dbo", table_name="KRAKEN_UPLOAD_TEST"
+kraken.upload(
+    "RESEARCH", df=data_to_upload, schema="testing.dbo", table="KRAKEN_UPLOAD_TEST"
 )
 ```
 

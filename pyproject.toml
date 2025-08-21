@@ -1,10 +1,11 @@
 [tool.poetry]
-name = "kraken"
-version = "1.0.0"
+name = "datakraken"
+version = "1.1.8"
 description = "Kraken is a convenience package that orchestrates data extraction by integrating SQL with Python, while managing safe storage and recall of sensitive connection credentials."
 authors = ["Cai Davis", "Michael George", "Faizan Hemotra"]
 license = "CC BY-NC 4.0"
 readme = "README.md"
+repository = "https://github.com/SETT-Centre-Data-and-AI/Kraken"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -28,6 +29,10 @@ mariadb = "^1.1.10"
 ipython = "^8.34.0" # >= 8.34.0 for compatibility with Python 3.10
 psycopg2-binary = "^2.9.10"
 
+[[tool.poetry.packages]]
+include = "kraken"
+from = "src"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
 pytest-cov = "^5.0.0"
@@ -40,11 +45,11 @@ pre-commit = "^4.2.0"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-tag_format = "v$major.$minor.$patch$prerelease"
+tag_format = "v$version"
 version_type = "pep440"
 version_provider = "poetry"
 update_changelog_on_bump = true
-major_version_zero = true
+major_version_zero = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
