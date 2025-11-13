@@ -28,6 +28,21 @@ Navigate to the repositry (`cd ...\Kraken\`) and execute
 poetry install
 ```
 
+## Prerequisites
+### Linux
+Kraken uses the mariadb and pyodbc packages which may require additional dependencies to be installed
+
+```console
+# Mariadb connector (Ubuntu / Debian)
+sudo apt install libmariadb3 libmariadb-dev
+
+# Pyodbc dependencies (Ubuntu / Debian)
+sudo apt install unixodbc unixodbc-dev
+```
+
+For information on installing the MariaDB Connector on other flavours of Linux see the [MariaDB Connector/C installation docs](https://mariadb.com/docs/connectors/mariadb-connector-c/install-mariadb-connector-c)
+
+
 # Setup<a id="setup"></a>
 ## Set Kraken Defaults<a id="set_kraken_defaults"></a>
 Kraken uses `keyring` to facilitate secure storage and recall of database credentials in your machine's credential manager for ease of access, rather than storing this sensitive information itself. This feature is leveraged to store a few other default settings/fallbacks too, so the first thing you'll want to do is set this up. This should only need to be run once per machine (unless you wish to change a default variable):
