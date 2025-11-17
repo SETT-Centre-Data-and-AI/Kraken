@@ -1,0 +1,86 @@
+name: Publish to PyPI
+
+on:
+  workflow_dispatch: {}
+
+env:
+  RELEASE_REPO: SETT-Centre-Data-and-AI/Kraken
+  RELEASE_BRANCH: main
+  PYTHON_VERSION: '3.13'
+  PYPI_USERNAME: __token__
+  PYPI_TOKEN_SECRET_NAME: PYPI_API_TOKEN
+
+jobs:
+  build-and-publish:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    environment: pypi
+
+    steps:
+    # 1. Decide whether to publish
+    - name: Decide whether to publish
+      env:
+        RELEASE_REPO: ${{ env.RELEASE_REPO }}
+        RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+        CURRENT_REPO: ${{ github.repository }}
+        CURRENT_REF_NAME: ${{ github.ref_name }}
+      run: |
+        Write-Host "Current repo: $env:CURRENT_REPO"
+        Write-Host "Current ref: $env:CURRENT_REF_NAME"
+        Write-Host "Release repo: $env:RELEASE_REPO"
+        Write-Host "Release branch: $env:RELEASE_BRANCH"
+
+        $needPublish = "false"
+        if ($env:CURRENT_REPO -eq $env:RELEASE_REPO -and $env:CURRENT_REF_NAME -eq $env:RELEASE_BRANCH) {
+          $needPublish = "true"
+        }
+
+        "NEED_PUBLISH=$needPublish" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        Write-Host "NEED_PUBLISH is $needPublish"
+
+    # 2. Early exit if we shouldn't publish
+    - name: Stop if publish not needed
+      if: env.NEED_PUBLISH != 'true'
+      run: |
+        echo "Publish not required for this invocation. Exiting job."
+        exit 0
+
+    # 3. Checkout
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 4. Python setup
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    # 5. Install build tools
+    - name: Install build tools
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade build twine
+
+    # 6. Build distributions
+    - name: Build dists
+      run: python -m build
+
+    # 7. Validate distributions
+    - name: Validate dists
+      run: python -m twine check dist/*
+
+    # 8. Install wheel and smoke test
+    - name: Install wheel and smoke test
+      run: |
+        python -m pip install dist/*.whl
+        python - << 'PY'
+        import kraken
+        PY
+
+    # 9. Publish to PyPI
+    - name: Publish to PyPI
+      env:
+        TWINE_USERNAME: ${{ env.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: python -m twine upload dist/*
