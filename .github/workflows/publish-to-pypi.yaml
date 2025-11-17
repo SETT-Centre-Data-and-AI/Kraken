@@ -9,6 +9,7 @@ env:
   PYTHON_VERSION: '3.13'
   PYPI_USERNAME: __token__
   PYPI_TOKEN_SECRET_NAME: PYPI_API_TOKEN
+  IMPORT_NAME: kraken
 
 jobs:
   build-and-publish:
@@ -26,10 +27,10 @@ jobs:
         CURRENT_REPO: ${{ github.repository }}
         CURRENT_REF_NAME: ${{ github.ref_name }}
       run: |
-        Write-Host "Current repo: $env:CURRENT_REPO"
-        Write-Host "Current ref: $env:CURRENT_REF_NAME"
         Write-Host "Release repo: $env:RELEASE_REPO"
         Write-Host "Release branch: $env:RELEASE_BRANCH"
+        Write-Host "Current repo: $env:CURRENT_REPO"
+        Write-Host "Current branch: $env:CURRENT_REF_NAME"
 
         $needPublish = "false"
         if ($env:CURRENT_REPO -eq $env:RELEASE_REPO -and $env:CURRENT_REF_NAME -eq $env:RELEASE_BRANCH) {
@@ -73,10 +74,13 @@ jobs:
     # 8. Install wheel and smoke test
     - name: Install wheel and smoke test
       run: |
-        python -m pip install dist/*.whl
-        python - << 'PY'
-        import kraken
-        PY
+        # Pick the newest wheel in dist\
+        $wheel = Get-ChildItem dist\*.whl | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        Write-Host "Installing wheel: $($wheel.FullName)"
+        python -m pip install "$($wheel.FullName)"
+
+        Write-Host "Testing import: $env:IMPORT_NAME"
+        python -c "import $env:IMPORT_NAME; print('Imported $env:IMPORT_NAME OK')"
 
     # 9. Publish to PyPI
     - name: Publish to PyPI
