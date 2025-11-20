@@ -124,7 +124,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
         return (
             f"Connector(alias='{self.alias}', username='{self.credentials.username}', "
             + f"state='{('Connected' if self.connected else 'Disconnected')}', "
-            + f"platform='{self.platform}, library='{self.config.sql_library}'"
+            + f"platform='{self.platform}', library='{self.config.sql_library}'"
             + ")"
         )
 

@@ -49,7 +49,8 @@ class Parser:
             input_sql (str): SQL to be parsed
         """
 
-        self.input_sql = input_sql.strip() + "\n"
+        normalised = input_sql.replace("\r\n", "\n").replace("\r", "\n")
+        self.input_sql = normalised.rstrip() + "\n"
         self.processing_sql = self.input_sql
 
     def __say(self, *values: object, sep: str = " ", end: str = "\n") -> None:
@@ -361,7 +362,7 @@ Analysis
 Total Queries Found:   {count_queries} (+ {count_empty} empty queries discarded)
 User Variables Set:    {count_variables}
 SQL Variables Found:   {count_user_variables}
-Variable Replacemnts:  {count_replacements}
+Variable Replacements:  {count_replacements}
 
 Explore
 -------

@@ -247,9 +247,9 @@ def save_connection_MariaDB(
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   database_alias (str):           Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        -   alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
         -   host (str):                     Database host server
-        -   databse (str):                  Database name
+        -   database (str):                 Database name
         -   username (str):                 Username
         -   password (str):                 Password
         -   port (str | int, optional):     Port. Defaults to 3306.
@@ -291,7 +291,7 @@ def save_connection_PostgreSQL(
     Args:
         -   alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
         -   host (str):                 Database host server
-        -   databse (str):              Database name
+        -   database (str):             Database name
         -   username (str):             Username
         -   password (str):             Password
         -   port (str | int, optional): Port. Defaults to 5432.
@@ -312,7 +312,7 @@ def save_connection_PostgreSQL(
     )
 
 
-### MariaDB ###
+### MySQL ###
 def save_connection_MySQL(
     alias: str,
     host: str,
@@ -329,9 +329,9 @@ def save_connection_MySQL(
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   database_alias (str):           Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        -   alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
         -   host (str):                     Database host server
-        -   databse (str):                  Database name
+        -   database (str):                 Database name
         -   username (str):                 Username
         -   password (str):                 Password
         -   port (str | int, optional):     Port. Defaults to 3306.
@@ -350,5 +350,46 @@ def save_connection_MySQL(
         password=password,
         platform=platform,
         default=default,
+        autosave=autosave,
+    )
+
+
+### DuckDB ###
+def save_connection_DuckDB(
+    alias: str,
+    database: str | None,
+    autosave: bool = False,
+) -> None:
+    """
+    Save a DuckDB database connection string under a callable alias and username.
+    As usernames are not supported with DuckDB, credentials are always saved under the alias as a default.
+    Leave database blank to instantiate an in-memory DuckDB database, or provide an absolute or relative path
+    to the database. If not appended with .duckdb or .db, .duckdb will be automatically appended.
+
+    Args:
+        -   alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        -   database (str | None):      Leave blank for an in-memory DuckDB database, or provide a path to a duckdb database
+        -   username (str):             Username
+        -   password (str):             Password
+        -   default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
+    """
+
+    platform = "duckdb"
+    if database is None:
+        database = ":memory:"
+    else:
+        database = (
+            f"{database}.duckdb"
+            if not database.endswith(".duckdb") and not database.endswith(".db")
+            else database
+        )
+
+    connection_string = f"duckdb:///{database}"
+
+    save_connection(
+        alias=alias,
+        connection_string=connection_string,
+        platform=platform,
+        default=True,
         autosave=autosave,
     )

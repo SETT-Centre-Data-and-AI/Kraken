@@ -1,15 +1,16 @@
 import pytest  # noqa
-from support.credentials import setup_main_test_credentials  # noqa
 from support import integrity  # noqa
 from kraken.ribosome.ribosome import run
 from kraken.classes.pack_lists import ResultList
+from support.config import config
 
 
-def test_ribosome():
+# @pytest.mark.skipif(integrity.temp_mode, reason="Using DuckDB")
+def test_ribosome() -> None:
     SQL_TEST_DIR = integrity.PATH_SQL_MAIN / "10_test_ribosome"
 
-    with setup_main_test_credentials():
-        results = run(filepaths=SQL_TEST_DIR, variables={})
+    _credentials = config.main_test.setup_test_credentials()
+    results = run(filepaths=SQL_TEST_DIR, variables={})
 
     assert results is not None
     assert isinstance(results, ResultList)

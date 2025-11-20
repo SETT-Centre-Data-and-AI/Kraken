@@ -21,6 +21,7 @@ from kraken.credentials.helpers import (  # noqa: F401
 from kraken.credentials.save_connection import save_connection  # noqa: F401
 from kraken.credentials.save_convenience import (  # noqa: F401
     save_connection_Cache,
+    save_connection_DuckDB,
     save_connection_Informix,
     save_connection_Iris,
     save_connection_MariaDB,

@@ -15,7 +15,7 @@ CONFIG_REPLACE_ALL_DECLARE_USAGES = "replace_all_declare_usages"
 CONFIG_REMOVE_SPLIT_TOKEN = "remove_split_token"
 CONFIG_FAST_EXECUTEMANY = "fast_executemany_support"
 
-F_SLASH_SPLIT_TOKEN = r"\n\s*?\/\s*?\n"
+F_SLASH_SPLIT_TOKEN = r"/\s*(?:\n|$)"
 WS = "\\s+"
 WS_OPTIONAL = "\\s*"
 
@@ -67,6 +67,11 @@ platforms = {
     },
     "mysql": {
         CONFIG_DEFAULT_SQL_DRIVER: "mysql",
+        CONFIG_MULTIPLE_DB_SUPPORT: False,
+        CONFIG_ADDITIONAL_WRAPPER_TOKENS: [("`", "`")],
+    },
+    "duckdb": {
+        CONFIG_DEFAULT_SQL_DRIVER: "duckdb",
         CONFIG_MULTIPLE_DB_SUPPORT: False,
         CONFIG_ADDITIONAL_WRAPPER_TOKENS: [("`", "`")],
     },

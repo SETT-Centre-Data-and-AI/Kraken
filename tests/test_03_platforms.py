@@ -2,8 +2,12 @@ import pytest
 
 from kraken.platforms.config import PlatformConfig
 
+### ====================== ###
+### ---------TESTS---------###
+### ====================== ###
 
-def test_split_tokens_extension():
+
+def test_split_tokens_extension() -> None:
     """
     Tests that additional split tokens are correctly added to the
     `split_tokens` attribute for the `oracle` platform.
@@ -15,7 +19,7 @@ def test_split_tokens_extension():
     assert config.split_tokens[-1][0] == additional_split[-1][0]
 
 
-def test_wrapper_tokens_extension():
+def test_wrapper_tokens_extension() -> None:
     """
     Tests that additional wrapper tokens are correctly added to the
     `wrapper_tokens` attribute for the `mssql` platform.

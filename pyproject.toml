@@ -1,6 +1,6 @@
 [project]
 name = "datakraken"
-version = "1.1.11"
+version = "1.1.12"
 description = "Kraken is a convenience package that orchestrates data extraction by integrating SQL with Python, while managing safe storage and recall of sensitive connection credentials."
 authors = [
   { name = "Cai Davis" },
@@ -9,7 +9,7 @@ authors = [
 ]
 license = "CC-BY-NC-4.0"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<4"
 
 # Dependencies
 dependencies = [
@@ -32,6 +32,9 @@ dependencies = [
   "mariadb>=1.1.10",
   "ipython>=8.34,<9.0",
   "psycopg2-binary>=2.9.10,<3.0",
+  "duckdb>=1.4.2",
+  "duckdb-engine>=0.17.0",
+  "keyrings-alt>=5.0.2 ; sys_platform == 'linux'",
 ]
 # Dev/Test Dependencies
 [dependency-groups]
@@ -44,6 +47,7 @@ dev = [
   "pandas-stubs>=2.2.3.241126,<3.0.0",
   "types-seaborn>=0.13.2.20250111,<1.0.0",
   "pre-commit>=4.2.0,<5.0.0",
+  "ipykernel (>=7.1.0,<8.0.0)",
 ]
 
 # URLs

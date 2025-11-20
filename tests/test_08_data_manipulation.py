@@ -6,7 +6,7 @@ from kraken.analysis.data_manipulation import check_df_integers
 
 
 @pytest.fixture
-def get_integers_input_df():
+def get_integers_input_df() -> pd.DataFrame:
     # data source: pandas.Series.convert_dtypes
     df = pd.DataFrame(
         {
@@ -23,7 +23,7 @@ def get_integers_input_df():
     return df
 
 
-def test_check_df_integers(get_integers_input_df: pd.DataFrame):
+def test_check_df_integers(get_integers_input_df: pd.DataFrame) -> None:
     output_df = check_df_integers(get_integers_input_df)
     expected_df = pd.DataFrame(
         {
