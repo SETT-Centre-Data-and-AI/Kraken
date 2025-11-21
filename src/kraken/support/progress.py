@@ -18,6 +18,103 @@ else:
 
 
 class Progress:
+    """Animated single-line progress indicator, including for tasks with an
+    unknown number of steps.
+
+    This class renders a single-line progress bar consisting of a header, an
+    elapsed-time timer, an animated spinner, and an optional suffix. It can be
+    updated manually via :meth:`update` or refreshed automatically in a
+    background thread via :meth:`start_auto_update`.
+
+    The class is safe to use in headless environments: if no TTY is available,
+    the progress bar becomes a no-op and avoids writing to `stdout`. It also
+    integrates with Kraken's `readout` system via :meth:`__check_active`.
+
+    The progress bar can be used as a context manager. When used in a
+    ``with`` block, it will automatically stop auto-updates on exit and
+    display a special "Errored" state if an exception is raised inside the
+    block.
+
+    Example:
+        Manual updates:
+
+        >>> from kraken.support.progress import Progress
+        >>> p = Progress(header="Running query", suffix="rows", active=True)
+        >>> p.show()
+        >>> for _ in range(10):
+        ...     # Do some work here
+        ...     p.update()
+        >>> p.finish()
+
+        As a context manager with auto-update:
+
+        >>> with Progress(
+        ...     header="Executing query",
+        ...     suffix="rows",
+        ...     auto_update=True,
+        ...     auto_update_interval=0.25,
+        ... ) as p:
+        ...     # Long-running operation
+        ...     for _ in range(100):
+        ...         # Do some work here
+        ...         p.update()
+        ...     # Progress bar will keep animating until the context exits
+
+    Args:
+        header: Text prefix shown at the beginning of the bar, typically a
+            description of the current task (for example, ``"Executing"`` or
+            ``"Loading data"``).
+        suffix: Optional text shown at the end of the bar. Can be updated
+            dynamically to reflect additional progress state (for example,
+            ``"1k rows"``).
+        size: Number of positions in the spinner. This controls how many
+            distinct frames are generated for the animated marker.
+        marker: Single-character string used as the moving marker in the
+            spinner (for example, ``"|"`` or ``"o"``).
+        complete_text: Text displayed in place of the spinner when the
+            progress is marked complete via :meth:`finish`.
+        in_progress_colour: Pair of ANSI escape sequences used to wrap the
+            spinner when in progress, given as ``(prefix, suffix)``. For
+            example, ``("\\033[38;5;214m", "\\033[0m")``.
+        complete_colour: Pair of ANSI escape sequences used to wrap the
+            completion text when :meth:`finish` is called and no error
+            occurred.
+        format: Python format string used to build the full line for display.
+            It must contain the named placeholders ``{header}``, ``{timer}``,
+            ``{spinner}``, and ``{suffix}``. For example:
+            ``"{header} ({timer}): {spinner} {suffix}"``.
+        auto_update: If ``True``, automatically starts a background thread
+            that periodically calls :meth:`update` once the instance is
+            created or when entering a context block.
+        auto_update_interval: Interval in seconds between automatic updates
+            when `auto_update` is enabled.
+        active: If ``False``, disables all output and automatic updating,
+            making the progress bar a no-op. This flag is also updated
+            internally based on environment checks (for example, headless
+            execution or `readout.ACTIVE`).
+
+    Args:
+        header (str): Current header text displayed at the start of the bar.
+        suffix (str): Current suffix text displayed at the end of the bar.
+        size (int): Number of positions in the spinner.
+        marker (str): Character used to represent the moving spinner marker.
+        complete_text (str): Text displayed instead of the spinner when the
+            progress is finished successfully.
+        in_progress_colour (tuple[str, str]): ANSI escape sequences applied to
+            the spinner while the progress is in progress.
+        complete_colour (tuple[str, str]): ANSI escape sequences applied to
+            the completion text when the bar is finished.
+        format (str): Current format string used for building the display
+            line.
+        auto_update (bool): Indicates whether the progress bar is configured
+            to use automatic background updates in a separate thread.
+        auto_update_interval (float): Time in seconds between automatic updates
+            when `auto_update` is enabled.
+        active (bool): Indicates whether the progress bar is allowed to write
+            output. This may be set to ``False`` due to environment checks or
+            if `readout` is disabled.
+    """
+
     def __init__(
         self,
         header: str = "Executing",

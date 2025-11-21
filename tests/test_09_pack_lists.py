@@ -5,37 +5,28 @@ from kraken.classes.packs import Query, Result
 
 from support import integrity  # noqa
 from support.config import config
-from typing import Iterator
-from contextlib import contextmanager
-import shutil
+from pathlib import Path
 
-
-# context manager to delete integrity.PATH_OUTPUTS after each test
-@contextmanager
-def clean_up() -> Iterator[None]:
-    try:
-        yield
-    finally:
-        shutil.rmtree(integrity.PATH_OUTPUTS)
+TEST_SUB_DIR = Path(__name__).stem
 
 
 def test_get_data() -> None:
     SQL_TEST_DIR = integrity.PATH_SQL_MAIN
-    OUTPUT_TEST_DIR = integrity.PATH_OUTPUTS
 
     _credentials = config.main_test.setup_test_credentials()
     sql = extract_sql(SQL_TEST_DIR / "09_pack_list_test.sql")
     results = execute_sql(sql)
     print(results)
-    with clean_up():
+    with config.setup_test_output_subdir(name=TEST_SUB_DIR) as directory:
         export_results(
             results,
-            OUTPUT_TEST_DIR,
+            directory,
             extension="xlsx",
             overwrite=True,
             filename="Pack List Test",
         )
-        spreadsheets = extract_spreadsheets(OUTPUT_TEST_DIR)
+
+        spreadsheets = extract_spreadsheets(directory)
 
         assert sql is not None
         assert results is not None

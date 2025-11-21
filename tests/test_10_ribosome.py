@@ -5,7 +5,6 @@ from kraken.classes.pack_lists import ResultList
 from support.config import config
 
 
-# @pytest.mark.skipif(integrity.temp_mode, reason="Using DuckDB")
 def test_ribosome() -> None:
     SQL_TEST_DIR = integrity.PATH_SQL_MAIN / "10_test_ribosome"
 

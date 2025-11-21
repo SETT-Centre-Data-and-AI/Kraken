@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import inspect
 from collections import UserList
 from typing import Iterable, Literal, Union, overload
 
@@ -207,7 +210,8 @@ class ResultList(UserList[Result]):
             figsize (tuple, optional): Graph size. Defaults to (22, 7).
             bw_adjust (float, optional): Granularity of density graphs. Lower values increase granularity. Defaults to 0.5.
             alpha (bool, optional): Transparency of fill. Defaults to None.
-            convert_categories_to_str (bool, optional): If numeric categories (for example, year of birth) display displeasingly with the x-axis forced to zero, set to True to convert numbers to categories. Note that this may change the ordering. Defaults to False.
+            convert_categories_to_str (bool, optional): If numeric categories (for example, year of birth) display
+                with the x-axis forced to zero, set to True to convert numbers to categories. Note that this may change the ordering. Defaults to False.
             linear_regression (bool, optional): If plotting a scatter-graph, setting to False will hide the linear regression line. Defaults to True.
             showfliers (bool, optional): If plotting a boxplot, show outliers. Defaults to True.
             title (str, optional): Graph title. If None, generated from input data.
@@ -297,7 +301,9 @@ class QueryList(UserList[Query]):
     def get(
         self, search_value: str, field_name: str = "df_name", get_all: bool = False
     ) -> Union[Query, "QueryList"]:
-        if field_name not in list(Query.__annotations__):
+        sig = inspect.signature(Query.__init__)
+        args = [name for name, _ in sig.parameters.items() if name != "self"]
+        if field_name not in args:
             raise KeyError(f"Cannot search '{field_name}' - no such attribute")
         found_results = QueryList()
         for result in self.data:
@@ -323,15 +329,12 @@ class QueryList(UserList[Query]):
             return found_results
 
     def drop(self, search_value: str, field_name: str) -> None:
-        found = self.get(search_value=search_value, field_name=field_name)
+        _found = self.get(search_value=search_value, field_name=field_name)
+        found: QueryList = QueryList([_found]) if isinstance(_found, Query) else _found
+        for item in found:
+            self.data.remove(item)
 
-        try:
-            for item in found:
-                self.data.remove(item)
-        except TypeError:
-            self.data.remove(found)
-
-    def copy(self) -> "QueryList":
+    def copy(self) -> QueryList:
         """Copies the QueryList."""
         copy = QueryList([query.copy() for query in self.data])
         return copy

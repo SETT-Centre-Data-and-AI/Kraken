@@ -30,16 +30,19 @@ def extract_sql(
 ) -> QueryList:
     """
     Summary:
-        -   Takes paths, or list of paths, to files or directories.
-        -   Searches paths and directories for SQL files, and generates a list of filepaths to each SQL file
-        -   Outputs list of parsed queries (class: Query), ready for execution
+        Takes paths, or list of paths, to files or directories. Searches paths and directories for SQL
+        files, and generates a list of filepaths to each SQL file. Outputs list of parsed queries
+        (class: Query), ready for execution.
 
     Args:
-        -   filepaths (str | list[str]): Path or list of paths to SQL files or directories of SQL files. If left blank, Kraken will search in the current directory. Defaults to "".
-        -   variables (dict): Dictionary of DEFINE/SET variables to override in the SQL execution
-        -   username (str): If entered, Kraken can use a specific username to later execute these queries. Otherwise, it will later attempt to fetch a default username from credentials. Defaults to None.
-        -   parsing_feedback (bool): If True, Kraken will print a summary report of the parsed queries. Defaults to False.
-        -   encoding (str): Encoding of SQL files. Defaults to "utf-8".
+        filepaths (str | list[str]): Path or list of paths to SQL files or directories of SQL files.
+            If left blank, Kraken will search in the current directory. Defaults to "".
+        variables (dict): Dictionary of DEFINE/SET variables to override in the SQL execution
+        username (str): If entered, Kraken can use a specific username to later execute these queries.
+            Otherwise, it will later attempt to fetch a default username from credentials. Defaults to None.
+        parsing_feedback (bool): If True, Kraken will print a summary report of the parsed queries.
+            Defaults to False.
+        encoding (str): Encoding of SQL files. Defaults to "utf-8".
 
     Returns:
         list[Query]: list of queries (class = Query)
@@ -62,20 +65,20 @@ def extract_sql(
     query_list = QueryList()
     for sql_file in sql_file_list:
         readout.print(f"  Parsing '{sql_file.filename}'... ", end="")
-        querys = _create_querys(sql_file, variables=variables)
-        plurality = "query" if len(querys) == 1 else "queries"
-        query_list.extend(querys)
+        queries = _create_queries(sql_file, variables=variables)
+        plurality = "query" if len(queries) == 1 else "queries"
+        query_list.extend(queries)
 
         readout.print(
             f"prepared to target database '{sql_file.db_alias}' with"
-            f" {len(querys)} {plurality}:"
+            f" {len(queries)} {plurality}:"
         )
 
         # Print Query Snippets
         if sql_file.variables:
             readout.print(f"   - Variables Used: {sql_file.variables}")
 
-        for query in querys:
+        for query in queries:
             sql_snippet = _prepare_sql_snippet(query.sql)
             readout.print(
                 f"   - Query: '{query.df_name}' /// SQL Snippet: {sql_snippet}"
@@ -125,7 +128,7 @@ def _create_sql_file_list(
 
             credential_manager = CredentialManager()
             credentials = credential_manager.fetch_credentials(
-                alias=db_alias, username=username
+                alias=db_alias, username=username  # type: ignore
             )
 
             sql_file = SQLFile(
@@ -136,7 +139,7 @@ def _create_sql_file_list(
                 raw_sql=raw_sql,
                 variables={},
                 split_queries=split_queries,
-                isolation_level=isolation_level,
+                isolation_level=isolation_level,  # type: ignore
             )
             sql_file_list.append(sql_file)
 
@@ -148,14 +151,14 @@ def _create_sql_file_list(
                     f"  -> WARNING: --$Split=False in file '{filename}', but multiple --$Dataframe flags found."
                     "\n     Multiple --$DataFrame flags cannot be used without splitting queries, "
                     "and Kraken will generate a DataFrame name based on the first flag on execution. "
-                    "To specifically name DataFrames, consider ommitting --$Split=False."
+                    "To specifically name DataFrames, consider omitting --$Split=False."
                 )
 
     return sql_file_list
 
 
 ### Helper: Create Query from SQLFile ###
-def _create_querys(sql_file: SQLFile, variables: dict = {}) -> list[Query]:
+def _create_queries(sql_file: SQLFile, variables: dict = {}) -> list[Query]:
     query_list = []
     split_queries = []
 
@@ -178,6 +181,12 @@ def _create_querys(sql_file: SQLFile, variables: dict = {}) -> list[Query]:
             sql_file.filename if i == 0 else f"{sql_file.filename}_{i + 1:02d}"
         )
         df_name = _extract_instruction(query, "dataframe") or backup_df_name
+        try:
+            arraysize_raw = _extract_instruction(query, "arraysize")
+            arraysize = int(arraysize_raw) if arraysize_raw else None
+        except ValueError as e:
+            arraysize = None
+            raise ValueError(f"arraysize parameter should be an integer: {e}") from e
         query_list.append(
             Query(
                 filepath=sql_file.filepath,
@@ -185,6 +194,7 @@ def _create_querys(sql_file: SQLFile, variables: dict = {}) -> list[Query]:
                 db_alias=sql_file.db_alias,
                 platform=sql_file.platform,
                 df_name=df_name,
+                arraysize=arraysize,
                 sql=query,
                 parsing_report=parser.summary_report,
                 isolation_level=sql_file.isolation_level,

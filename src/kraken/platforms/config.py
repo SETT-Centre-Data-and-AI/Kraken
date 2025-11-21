@@ -3,6 +3,7 @@ from typing import Any
 from kraken.platforms.integrity import DEFAULT_NAME, initialise_platform
 from kraken.support.readout import readout
 
+CONFIG_ARRAYSIZE_SUPPORT = "arraysize_support"
 CONFIG_MULTIPLE_DB_SUPPORT = "multiple_db_support"
 CONFIG_SQL_LIBRARY = "sql_library"
 CONFIG_DEFAULT_SQL_DRIVER = "default_sql_driver"
@@ -28,6 +29,7 @@ def expand_whitespace(string: str, ws_regex: str = WS) -> str:
 
 platforms = {
     "oracle": {
+        CONFIG_ARRAYSIZE_SUPPORT: True,
         CONFIG_MULTIPLE_DB_SUPPORT: False,
         CONFIG_DEFAULT_SQL_DRIVER: "oracledb",
         CONFIG_DECLARE_PATTERN: r"DEFINE\s+(\w+)\s*=\s*(.+)",
@@ -83,6 +85,7 @@ class PlatformConfig:
         self, platform: str | None = DEFAULT_NAME, warn_if_unknown: bool = False
     ) -> None:
         self.platform: str = DEFAULT_NAME
+        self.arraysize_support: bool = False
         self.multiple_db_support: bool = True
         self.sql_library: str = "sqlalchemy"
         self.default_sql_driver: str = "pyodbc"

@@ -66,24 +66,35 @@ def graph(
     Args:
         df (pd.DataFrame): Input DataFrame.
         x (str): x-axis column.
-        y (str, optional): y-axis column. If left empty, graphs requiring a y-axis value will plot an aggregation of the x-value here. Defaults to None.
-        graph (str, optional): Selected graph. Processing (and acceptance) of input arguments varies by graph. Defaults to None.
-        x_agg (int | str optional): Aggregation of the x-values into bins. Accepts 'year', 'month', etc for date columns, or integers for numeric columns. Defaults to None.
-        y_agg (str, optional): Aggregation calculation to apply to y-values, for example 'sum', 'count', or 'mean'. Defaults to None.
+        y (str, optional): y-axis column. If left empty, graphs requiring a y-axis value will plot an aggregation
+            of the x-value here. Defaults to None.
+        graph (str, optional): Selected graph. Processing (and acceptance) of input arguments varies by graph.
+            Defaults to None.
+        x_agg (int | str optional): Aggregation of the x-values into bins. Accepts 'year', 'month', etc for date
+            columns, or integers for numeric columns. Defaults to None.
+        y_agg (str, optional): Aggregation calculation to apply to y-values, for example 'sum', 'count', or 'mean'.
+            Defaults to None.
         group_colour (str, optional): Column to group by, or apply, colouring. Defaults to None.
-        where_clause (str, optional): SQL-style where clause to quickly filter DataFrame. Note that filters directly applied in the 'df=' are faster. Defaults to None.
+        where_clause (str, optional): SQL-style where clause to quickly filter DataFrame. Note that filters
+            directly applied in the 'df=' are faster. Defaults to None.
         convert_dates (str, optional): Convert 'object' columns recognisable as dates. Defaults to True.
-        discard_null_aggs (str, optional): Discard rows (and plots) with null y-values or aggregations. Defaults to True.
+        discard_null_aggs (str, optional): Discard rows (and plots) with null y-values or aggregations.
+            Defaults to True.
         figsize (tuple, optional): Graph size. Defaults to (22, 7).
-        bw_adjust (float, optional): Granularity of density graphs. Lower values increase granularity. Defaults to 0.5.
+        bw_adjust (float, optional): Granularity of density graphs. Lower values increase granularity.
+            Defaults to 0.5.
         alpha (float, optional): Transparency of fill. Defaults to None.
-        convert_categories_to_str (bool, optional): If numeric categories (for example, year of birth) display displeasingly with the x-axis forced to zero, set to True to convert numbers to categories. Note that this may change the ordering. Defaults to False.
-        linear_regression (bool, optional): If plotting a scatter-graph, setting to False will hide the linear regression line. Defaults to True.
+        convert_categories_to_str (bool, optional): If numeric categories (for example, year of birth) display
+            with the x-axis forced to zero, set to True to convert numbers to categories. Note that this may
+            change the ordering. Defaults to False.
+        linear_regression (bool, optional): If plotting a scatter-graph, setting to False will hide the linear
+            regression line. Defaults to True.
         showfliers (bool, optional): If plotting a boxplot, show outliers. Defaults to True.
         title (str, optional): Graph title. If None, generated from input data.
         x_label (str, optional): X-axis label. If None, generated from input data.
         y_label (str, optional): Y-axis label. If None, generated from input data.
-        return_results (bool, optional): Returns resultant aggregation table created to plot graph as a DataFrame. Defaults to False.
+        return_results (bool, optional): Returns resultant aggregation table created to plot graph as a
+            DataFrame. Defaults to False.
 
     Returns:
         DataFrame: DataFrame of resultant aggregation table (if `return_results = True`).
@@ -161,18 +172,18 @@ def graph(
 
     if y and graph_settings.y_accepted is False:  # Check y accepted
         readout.warn(
-            f"Warning: y-values not accepted for {graph} graphs. Ignorning  y='{y}'."
+            f"Warning: y-values not accepted for {graph} graphs. Ignoring  y='{y}'."
         )
 
     if x_agg and not graph_settings.x_agg_mode:  # Check x_agg accepted
         readout.warn(
-            f"X-value aggregation not accepted for '{graph}' graphs. Igorning x_agg={x_agg}."
+            f"X-value aggregation not accepted for '{graph}' graphs. Ignoring x_agg={x_agg}."
         )
         x_agg = None
 
     if y_agg and not graph_settings.y_agg:  # Check y_agg accepted
         readout.warn(
-            f"Y-value aggregation not accepted for '{graph}' graphs. Igorning y_agg='{y_agg}'."
+            f"Y-value aggregation not accepted for '{graph}' graphs. Ignoring y_agg='{y_agg}'."
         )
         y_agg = None
 
@@ -212,7 +223,7 @@ def graph(
     # Check Optional Group
     if "colour" not in graph_settings.groups_supported:
         readout.warn(
-            f"Colour grouping not supported for '{graph}' graphs. Ignorning group_colour={group_colour}"
+            f"Colour grouping not supported for '{graph}' graphs. Ignoring group_colour={group_colour}"
         )
         group_colour = None
 

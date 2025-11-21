@@ -1,5 +1,4 @@
 import math
-from typing import Literal, overload
 
 import numpy as np
 from pandas import DataFrame, notnull
@@ -16,7 +15,7 @@ def _truncate_cols(df: DataFrame, max_header_length: int | None = None) -> DataF
     if not df.empty:
         if not max_header_length:
             max_header_length = int(df.columns.str.len().max())
-        renamed_cols = dict(zip(df.columns, [col[:max_header_length] for col in df]))  # type: ignore[index]
+        renamed_cols = dict(zip(df.columns, [col[:max_header_length] for col in df], strict=True))  # type: ignore[index]
         return df.rename(columns=renamed_cols)
     return df
 
@@ -70,7 +69,7 @@ def _convert_dtypes(
 
         # Set VARCHAR(length) if all values are null
         if math.isnan((df[c].str.len().max())):
-            varchar_remap[c] = varchar_length if varchar_length else 1
+            varchar_remap[c] = VARCHAR(varchar_length) if varchar_length else VARCHAR(1)
             continue
 
         # Caculate max string length
@@ -91,32 +90,15 @@ def _convert_dtypes(
     return varchar_remap | float_remap  # type: ignore[return-value]
 
 
-@overload
-def _convert_headers(
-    df: DataFrame,
-    convert_header_case: str | None = ...,
-    inplace: Literal[False] = False,
-) -> DataFrame: ...
-
-
-@overload
-def _convert_headers(
-    df: DataFrame,
-    convert_header_case: str | None = ...,
-    inplace: bool = ...,
-) -> DataFrame | None: ...
-
-
 def _convert_headers(
     df: DataFrame,
     convert_header_case: str | None = None,
-    inplace: bool = False,
-) -> DataFrame | None:
+) -> DataFrame:
     if convert_header_case not in {None, "upper", "lower"}:
         raise ValueError("Argument 'convert_header_case' takes 'upper','lower' or None")
     if convert_header_case == "upper":
-        return df.rename(mapper=lambda x: x.upper(), axis="columns", inplace=inplace)
+        return df.rename(mapper=lambda x: x.upper(), axis="columns")
     elif convert_header_case == "lower":
-        return df.rename(mapper=lambda x: x.lower(), axis="columns", inplace=inplace)
+        return df.rename(mapper=lambda x: x.lower(), axis="columns")
     else:
         return df

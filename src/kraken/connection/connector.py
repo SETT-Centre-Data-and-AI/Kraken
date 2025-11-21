@@ -87,6 +87,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
             ]
             | None
         ) = None,
+        **kwargs: Any,
     ) -> None:
         self.credentials: Credentials = (
             custom_credentials
@@ -119,6 +120,9 @@ class Connector(ABC, Generic[TConn, TCursor]):
         self.cursor: TCursor | None = None
         self.connected: bool = False
         self.multiset_supported: bool = False
+        self.kwargs = kwargs
+        if self.kwargs.get("arraysize") is None or not self.config.arraysize_support:
+            self.kwargs.pop("arraysize", None)
 
     def __repr__(self) -> str:
         return (
@@ -184,7 +188,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
                 self._connect_child()
 
             self.connected = True
-            self.__set_multiset_support()
+            self._set_multiset_support()
 
             if allow_feedback:
                 self._say(f"Connected to {message_alias}")
@@ -201,7 +205,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
         Returns:
             None (closes connection)
         """
-        self.__close_cursor()
+        self._close_cursor()
         if self.connection:
             if self.is_connected():
                 self.connection.close()
@@ -296,14 +300,14 @@ class Connector(ABC, Generic[TConn, TCursor]):
 
             try:
                 if not self.cursor:
-                    self.cursor = self.connection.cursor()
+                    self.cursor = self.connection.cursor()  # type: ignore
                 self.cursor.execute(query)
 
             except Exception as e:
-                self.__close_connection_in_error()
+                self._close_connection_in_error()
                 raise QueryExecutionError(str(e)) from e
 
-            dataframes = self.__fetch_data(
+            dataframes = self._fetch_data(
                 query_name=query_name,
                 progress=progress_ctx,
                 indent=indent,
@@ -311,7 +315,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
                 check_column_duplicates=check_column_duplicates,
             )
 
-            self.__execute_finish(commit=commit, close=close)
+            self._execute_finish(commit=commit, close=close)
 
             if len(dataframes) == 1:
                 return dataframes[0]
@@ -363,7 +367,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
         from kraken.uploading.uploader import Uploader
 
         # Checks
-        if_table_exists = if_table_exists.lower() if if_table_exists else None
+        if_table_exists = if_table_exists.lower() if if_table_exists else None  # type: ignore
 
         if not self.autocommit:
             readout.warn(
@@ -397,7 +401,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
         uploader.upload()
 
     ### Private Functions ###
-    def __close_connection_in_error(self) -> None:
+    def _close_connection_in_error(self) -> None:
         try:
             self.close_connection()
         except Exception:
@@ -408,17 +412,17 @@ class Connector(ABC, Generic[TConn, TCursor]):
             except Exception:
                 pass
 
-    def __close_cursor(self) -> None:
+    def _close_cursor(self) -> None:
         if self.cursor:
             self.cursor.close()
             self.cursor = None
 
-    def __set_multiset_support(self) -> None:
+    def _set_multiset_support(self) -> None:
         """Detect whether the current cursor supports `.nextset()` (i.e., multiple result sets)."""
         if self.cursor:
             self.multiset_supported = callable(getattr(self.cursor, "nextset", None))
 
-    def __process_dataframe(
+    def _process_dataframe(
         self, df: DataFrame, clean_df: bool, check_column_duplicates: bool
     ) -> DataFrame:
         if df is None:
@@ -434,16 +438,16 @@ class Connector(ABC, Generic[TConn, TCursor]):
             )
         return df
 
-    def __fetch_columns(self) -> list[str]:
-        return [column[0] for column in self.cursor.description]
+    def _fetch_columns(self) -> list[str]:
+        return [column[0] for column in self.cursor.description]  # type: ignore
 
-    def __fetch_rows(self) -> list[tuple]:
+    def _fetch_rows(self) -> list[tuple]:
         if self.batch_size:
-            return [tuple(row) for row in self.cursor.fetchmany(self.batch_size)]
+            return [tuple(row) for row in self.cursor.fetchmany(self.batch_size)]  # type: ignore
         else:
-            return [tuple(row) for row in self.cursor.fetchall()]
+            return [tuple(row) for row in self.cursor.fetchall()]  # type: ignore
 
-    def __fetch_data(
+    def _fetch_data(
         self,
         query_name: str,
         progress: Progress,
@@ -456,7 +460,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
         row_count = 0
 
         while True:
-            if self.cursor.description is not None:
+            if self.cursor.description is not None:  # type: ignore
                 # Process the current result set
                 set_count += 1
                 set_text = (
@@ -468,11 +472,11 @@ class Connector(ABC, Generic[TConn, TCursor]):
                 )
                 progress.update()
 
-                columns = self.__fetch_columns()
+                columns = self._fetch_columns()
                 rows: list[tuple] = []
 
                 while True:
-                    batch = self.__fetch_rows()
+                    batch = self._fetch_rows()
                     if not batch:
                         break
                     rows.extend(batch)
@@ -488,7 +492,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
                         header=f"{indent}Query: {query_name} Processing  |"
                     )
                     df = DataFrame(data=rows, columns=columns)
-                    df = self.__process_dataframe(
+                    df = self._process_dataframe(
                         df=df,
                         clean_df=clean_df,
                         check_column_duplicates=check_column_duplicates,
@@ -499,7 +503,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
 
             # Move to next result set if possible
             try:
-                if not self.multiset_supported or not self.cursor.nextset():
+                if not self.multiset_supported or not self.cursor.nextset():  # type: ignore
                     break
             except Exception:
                 # certain drivers like psycopg2 report multiset_supported
@@ -511,11 +515,11 @@ class Connector(ABC, Generic[TConn, TCursor]):
 
         return dataframes
 
-    def __execute_finish(self, commit: bool, close: bool) -> None:
+    def _execute_finish(self, commit: bool, close: bool) -> None:
         if commit and self.connection:
             self.connection.commit()
 
-        self.__close_cursor()
+        self._close_cursor()
 
         if close:
             self.close_connection()
@@ -552,7 +556,9 @@ class SaConnector(
             Engine: SQLAlchemy Engine
         """
         self.engine = sa.create_engine(
-            url=self.connection_string, isolation_level=self.isolation_level
+            url=self.connection_string,
+            isolation_level=self.isolation_level,
+            **self.kwargs,
         )
         return self.engine
 
@@ -594,6 +600,90 @@ class SaConnector(
         self.connection_string = self.engine.url.set(database=database)
         self.create_engine()
         self._say(f"Switching to database '{database}'")
+
+    def execute(
+        self,
+        query: str,
+        query_name: str | None = None,
+        commit: bool | None = None,
+        close: bool | None = None,
+        batch_size: int | None = None,
+        clean_df: bool = True,
+        check_column_duplicates: bool = True,
+        header_indent: str = "",
+        progress: bool = True,
+    ) -> DataFrame | list[DataFrame]:
+        """Execute SQL query using connection.
+
+        Args:
+            query (str): SQL Query
+            query_name (str): Name of query (optional).
+            commit (bool): If True, connection commits after executing. Defaults to None, using the Connector default (Connector.autocommit).
+            close (bool): If True, closes the connection after executing. Defaults to None, using the Connector default (Connector.autoclose).
+            batch_size (int): Downloads data in batches. Uses current Connector.batch_size if None. Set to 0 to
+                download all data without batching.
+            clean_df (bool): Cleans DataFrame after pandas generation, including converting float64 to Int64 if
+                applicable (recommended).
+            check_column_duplicates (bool): Checks DataFrame for duplicate column names and throws warning.
+            header_indent (str): Prefix each readout with an indent (e.g. ' -> ')
+            progress (bool): If True, activates query progress bar. Switching to False may save a little
+                overhead if looping over a large number of very fast queries.
+
+        Returns:
+            DataFrame: Pandas DataFrame with results of query
+        """
+        # Set Parameters
+        commit = commit if isinstance(commit, bool) else self.autocommit
+        close = close if isinstance(close, bool) else self.autoclose
+        self.batch_size = batch_size if batch_size is not None else self.batch_size
+        query_name = (
+            query_name
+            if query_name
+            else f"'{_prepare_sql_snippet(query, max_characters=20)}'"
+        )
+        indent = header_indent
+        dataframes = None
+
+        status = "Executing  " if self.is_connected() else "Connecting "
+        header = f"{indent}Query: {query_name} {status} |"
+
+        with Progress(
+            header=header, active=progress, auto_update_interval=0.5
+        ) as progress_ctx:
+            self.connect(allow_feedback=False)
+            progress_ctx.update_header(
+                header=f"{indent}Query: {query_name} Executing   |"
+            )
+            progress_ctx.start_auto_update()
+
+            try:
+                if self.kwargs.get("arraysize"):
+                    connection = self.engine.connect()
+                    result = connection.exec_driver_sql(query)
+                    self.cursor = result.cursor
+                else:
+                    if not self.cursor:
+                        self.cursor = self.connection.cursor()
+                    self.cursor.execute(query)
+
+            except Exception as e:
+                self._close_connection_in_error()
+                raise QueryExecutionError(str(e)) from e
+
+            dataframes = self._fetch_data(
+                query_name=query_name,
+                progress=progress_ctx,
+                indent=indent,
+                clean_df=clean_df,
+                check_column_duplicates=check_column_duplicates,
+            )
+
+            self._execute_finish(commit=commit, close=close)
+
+            if len(dataframes) == 1:
+                return dataframes[0]
+            else:
+                return dataframes
 
 
 class PyoConnector(Connector[pyodbc.Connection, pyodbc.Cursor]):
@@ -674,6 +764,7 @@ def create_connector(
         ]
         | None
     ) = None,
+    **kwargs: Any,
 ) -> Connector:
     """Creates Kraken Connector.
 
@@ -686,6 +777,7 @@ def create_connector(
         isolation_level (str | None): SQL Alchemy isolation level. Defaults to None. If errors are raised related to not being able to perform
         queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT". This will override the ability to
         commit and rollback using the Connector, so this should be handled within SQL.
+        kwargs: Keyword arguments for the sqlalchemy create_engine function.
 
     Returns:
         Connector: Kraken Connector class
@@ -712,4 +804,5 @@ def create_connector(
         autocommit=autocommit,
         autoclose=autoclose,
         isolation_level=isolation_level,
+        **kwargs,
     )

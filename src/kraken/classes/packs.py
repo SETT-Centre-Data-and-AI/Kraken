@@ -19,6 +19,7 @@ class SQLFile:
     raw_sql: str
     variables: dict[str, str]
     split_queries: bool = True
+    arraysize: int | None = None
     parsing_report: str | None = None
     isolation_level: (
         Literal[
@@ -43,32 +44,16 @@ class SQLFile:
 
 
 class Query:
-    filename: str
-    df_name: str
-    sql: str
-    filepath: Path
-    db_alias: str | None = None
-    platform: str | None = None
-    parsing_report: str | None = None
-    isolation_level: (
-        Literal[
-            "SERIALIZABLE",
-            "REPEATABLE READ",
-            "READ COMMITTED",
-            "READ UNCOMMITTED",
-            "AUTOCOMMIT",
-        ]
-        | None
-    ) = None
-
     def __init__(
         self,
         filename: str,
         df_name: str,
         sql: str,
         filepath: Path,
+        *,
         db_alias: str | None = None,
         platform: str | None = None,
+        arraysize: int | None = None,
         parsing_report: str | None = None,
         isolation_level: (
             Literal[
@@ -85,9 +70,10 @@ class Query:
         self.df_name: str = df_name
         self.sql: str = sql
         self.filepath: Path = filepath
-        self.db_alias: str = db_alias
-        self.platform: str = platform
-        self.parsing_report: str = parsing_report
+        self.arraysize: int | None = arraysize
+        self.db_alias: str | None = db_alias
+        self.platform: str | None = platform
+        self.parsing_report: str | None = parsing_report
         self.isolation_level: (
             Literal[
                 "SERIALIZABLE",
@@ -108,7 +94,8 @@ class Query:
 
         return (
             f"Query(filename='{self.filename}', db_alias='{self.db_alias}', "
-            + f"df_name='{self.df_name}', sql='{_prepare_sql_snippet(self.sql, max_characters=50)}')"
+            + f"df_name='{self.df_name}', sql='{_prepare_sql_snippet(self.sql, max_characters=50)}'"
+            + f"{f', arraysize={self.arraysize}' if self.arraysize else ''})"
         )
 
     def copy(self) -> "Query":
@@ -294,7 +281,8 @@ class Result:
             figsize (tuple, optional): Graph size. Defaults to (22, 7).
             bw_adjust (float, optional): Granularity of density graphs. Lower values increase granularity. Defaults to 0.5.
             alpha (bool, optional): Transparency of fill. Defaults to None.
-            convert_categories_to_str (bool, optional): If numeric categories (for example, year of birth) display displeasingly with the x-axis forced to zero, set to True to convert numbers to categories. Note that this may change the ordering. Defaults to False.
+            convert_categories_to_str (bool, optional): If numeric categories (for example, year of birth) display
+                with the x-axis forced to zero, set to True to convert numbers to categories. Note that this may change the ordering. Defaults to False.
             linear_regression (bool, optional): If plotting a scatter-graph, setting to False will hide the linear regression line. Defaults to True.
             showfliers (bool, optional): If plotting a boxplot, show outliers. Defaults to True.
             title (str, optional): Graph title. If None, generated from input data.

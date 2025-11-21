@@ -1,3 +1,9 @@
+## v1.2.0
+### Fix
+
+- **ubuntu**: refactored kraken for ubuntu compatibility
+- **oracle**: added arraysize support for oracle to speed up SQL execution
+
 ## v1.1.8 (2025-08-19)
 
 ### Feat

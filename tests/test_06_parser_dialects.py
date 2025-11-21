@@ -17,7 +17,7 @@ class PlatformTest:
         for a platform, under the `tests/sql/parsing` we should have the structure:
 
         `platform/` (folder name should be the name of the platform, case-sensitive)
-         - `test_n/` (minumum of one test, folder name not enforced but should be in order)
+         - `test_n/` (minimum of one test, folder name not enforced but should be in order)
            - `input.sql` (input SQL, file name enforced)
            - `outputs/` (folder for each expected output query, folder name enforced)
             - `1.sql` (first expected output query - integer filename not enforced but should be in order)

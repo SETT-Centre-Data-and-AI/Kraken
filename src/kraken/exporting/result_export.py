@@ -42,25 +42,20 @@ def export_results(
     **kwargs: Any,
 ) -> None:
     """
-    Summary:
-        -   Exports results or a dataframe to a supported extension type (csv or xlsx).
-        -   For filetypes supporting multiple dataframes (such as xlsx), the filename argument can be provided.
-        -   For filetypes supporting single dataframes only (such as csv) the filename provided will be appended to the prefix (if given), with the dataframe name used instead.
+    Exports results or a dataframe to a supported extension type (csv or xlsx).
+    For filetypes supporting multiple dataframes (such as xlsx), the filename argument can be provided.
+    For filetypes supporting single dataframes only (such as csv) the filename provided will be appended to the prefix (if given), with the dataframe name used instead.
 
     Args:
-        -   results (Result | ResultList | DataFrame): results to export.
-        -   directory (str | Path): Output directory. Created if not found.
-        -   extension (str, optional): Extension to write files to. Defaults to "csv".
-        -   filename (str, optional): If entered, used as the output file name. If multiple files are output, this is appended the prefix and precedes the dataframe name. Defaults to "".
-        -   prefix (str, optional): Prefix to use when multiple output files are generated. Defaults to "".
-        -   suffix (str, optional): Suffix to use when multiple output files are generated. Defaults to "".
-        -   overwrite (bool, optional): If False, Kraken will append the output file in the event of a conflict. If True, Kraken will overwrite the existing file. Defaults to False.
-        -   zip_filename (str, optional): If provided, Kraken will zip files in memory before writing to this filename, rather than directly. Defaults to None (direct writing of files).
-
-    **kwargs:
-        -   delimiter (str, optional): If exporting to a delimited file format (like CSV), this is used as the delimiter. Defaults to ",".
-
-    Returns: Nothing
+        results (Result | ResultList | DataFrame): results to export.
+        directory (str | Path): Output directory. Created if not found.
+        extension (str, optional): Extension to write files to. Defaults to "csv".
+        filename (str, optional): If entered, used as the output file name. If multiple files are output, this is appended the prefix and precedes the dataframe name. Defaults to "".
+        prefix (str, optional): Prefix to use when multiple output files are generated. Defaults to "".
+        suffix (str, optional): Suffix to use when multiple output files are generated. Defaults to "".
+        overwrite (bool, optional): If False, Kraken will append the output file in the event of a conflict. If True, Kraken will overwrite the existing file. Defaults to False.
+        zip_filename (str, optional): If provided, Kraken will zip files in memory before writing to this filename, rather than directly. Defaults to None (direct writing of files).
+        delimiter (str, optional): If exporting to a delimited file format (like CSV), this is used as the delimiter. Defaults to ",".
     """
 
     # Prepare
@@ -177,7 +172,7 @@ def _check_overwrite_conflict(filepath: str | Path, overwrite: bool = False) -> 
     ext = filepath.suffix
     conflicts = [
         Path(dir_file).stem
-        for dir_file in Path(filepath.parent).glob("**/*")
+        for dir_file in sorted(Path(filepath.parent).glob("**/*"))
         if dir_file.is_file()
         and Path(dir_file).suffix == Path(filepath).suffix
         and Path(dir_file).stem[: len(old_stem)] == old_stem
@@ -190,6 +185,10 @@ def _check_overwrite_conflict(filepath: str | Path, overwrite: bool = False) -> 
             new_filepath = Path.joinpath(filepath.parent, new_filename)
             readout.warn(f"renaming to '{new_filename}'... ", end="")
             return new_filepath
+
+    raise RuntimeError(
+        "Could not determine a non-conflicting filepath"
+    )  # mathematically impossible, added for mypy
 
 
 # Check Arguments

@@ -18,18 +18,19 @@ def save_connection_MSSQL(
     Save a SQL Server database connection string under a callable alias and username.
     If 'username' = '', then the connection will be saved to use Windows Authentication, and any password is ignored.
     If 'default' is set to True, this username (or Windows Authenticated login method) will be used as the default for the given alias. Saves as:
+
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
-        -   server (str):                   Server
-        -   database (str):                 Database name
-        -   username (str, optional):       Username. If None, password is ignored and Windows Authentication is used. Defaults to None.
-        -   password (str, optional):       Password. Ignored if username = None. Defaults to None.
-        -   driver_version (int, optional): ODBC driver version. Defaults to 17.
-        -   default (bool, optional):       If True, saves username as default for database alias. Defaults to False.
-        -   sqldriver (str, optional):      SQL Driver to use for connections. Defaults to "pyodbc".
-        -   autosave (bool, optional):      If True, saves regardless of connection success. Defaults to False.
+        alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        server (str):                   Server
+        database (str):                 Database name
+        username (str, optional):       Username. If None, password is ignored and Windows Authentication is used. Defaults to None.
+        password (str, optional):       Password. Ignored if username = None. Defaults to None.
+        driver_version (int, optional): ODBC driver version. Defaults to 17.
+        default (bool, optional):       If True, saves username as default for database alias. Defaults to False.
+        sqldriver (str, optional):      SQL Driver to use for connections. Defaults to "pyodbc".
+        autosave (bool, optional):      If True, saves regardless of connection success. Defaults to False.
     """
     platform = "mssql"
     login = f"{username}:{password}@" if username and password else ""
@@ -72,18 +73,19 @@ def save_connection_Oracle(
     """
     Save an Oracle database connection string under a callable alias and username.
     If 'default' is set to True, this username will be used as the default for the given alias. Saves as:
+
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
-        -   username (str):                 Username
-        -   password (str):                 Password
-        -   host (str):                     Database host server
-        -   service (str):                  Database service address
-        -   port (str | int, optional):     Port. Defaults to 1521.
-        -   default (bool, optional):       If True, saves username as default for database alias. Defaults to False.
-        -   sqldriver (str, optional):      SQL Driver to use for connections. Defaults to "oracledb".
-        -   autosave (bool, optional):      If True, saves regardless of connection success. Defaults to False.
+        alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        username (str):                 Username
+        password (str):                 Password
+        host (str):                     Database host server
+        service (str):                  Database service address
+        port (str | int, optional):     Port. Defaults to 1521.
+        default (bool, optional):       If True, saves username as default for database alias. Defaults to False.
+        sqldriver (str, optional):      SQL Driver to use for connections. Defaults to "oracledb".
+        autosave (bool, optional):      If True, saves regardless of connection success. Defaults to False.
     """
     platform = "oracle"
     connection_string = (
@@ -115,17 +117,18 @@ def save_connection_Informix(
     """
     Save an Informix database connection string under a callable alias and username.
     If 'default' is set to True, this username will be used as the default for the given alias. Saves as:
+
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
-        -   username (str):             Username
-        -   password (str):             Password
-        -   database (str):             Database name
-        -   host (str):                 Database host
-        -   server (str):               Database server
-        -   default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
-        -   autosave (bool, optional):  If True, saves regardless of connection success. Defaults to False.
+        alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        username (str):             Username
+        password (str):             Password
+        database (str):             Database name
+        host (str):                 Database host
+        server (str):               Database server
+        default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
+        autosave (bool, optional):  If True, saves regardless of connection success. Defaults to False.
     """
     platform = "informix"
     driver = "{IBM INFORMIX ODBC DRIVER (64-Bit)}"
@@ -166,16 +169,17 @@ def save_connection_Cache(
     """
     Save an Intersystems Cache database connection string under a callable alias and username.
     If 'default' is set to True, this username will be used as the default for the given alias. Saves as:
+
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
-        -   username (str):             Username
-        -   password (str):             Password
-        -   datbase (str):              Database/namespace
-        -   server (str):               Database server
-        -   default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
-        -   autosave (bool, optional):  If True, saves regardless of connection success. Defaults to False.
+        alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        username (str):             Username
+        password (str):             Password
+        datbase (str):              Database/namespace
+        server (str):               Database server
+        default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
+        autosave (bool, optional):  If True, saves regardless of connection success. Defaults to False.
     """
 
     platform = "cache"
@@ -205,19 +209,20 @@ def save_connection_Iris(
     """
     Save an Intersystems Iris database connection string under a callable alias and username.
     If 'default' is set to True, this username will be used as the default for the given alias. Saves as:
+
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
-        -   username (str):             Username
-        -   password (str):             Password
-        -   datbase (str):              Database/namespace
-        -   server (str):               Database server
-        -   default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
-        -   autosave (bool, optional):  If True, saves regardless of connection success. Defaults to False.
+        alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        username (str):             Username
+        password (str):             Password
+        datbase (str):              Database/namespace
+        server (str):               Database server
+        default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
+        autosave (bool, optional):  If True, saves regardless of connection success. Defaults to False.
     """
 
-    platform = "Iris"
+    platform = "iris"
     connection_string = f"DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password};"
     save_connection(
         alias=alias,
@@ -244,16 +249,17 @@ def save_connection_MariaDB(
     """
     Save a MariaDB database connection string under a callable alias and username.
     If 'default' is set to True, this username will be used as the default for the given alias. Saves as:
+
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
-        -   host (str):                     Database host server
-        -   database (str):                 Database name
-        -   username (str):                 Username
-        -   password (str):                 Password
-        -   port (str | int, optional):     Port. Defaults to 3306.
-        -   default (bool, optional):       If True, saves username as default for database alias. Defaults to False.
+        alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        host (str):                     Database host server
+        database (str):                 Database name
+        username (str):                 Username
+        password (str):                 Password
+        port (str | int, optional):     Port. Defaults to 3306.
+        default (bool, optional):       If True, saves username as default for database alias. Defaults to False.
     """
 
     platform = "mariadb"
@@ -286,16 +292,17 @@ def save_connection_PostgreSQL(
     """
     Save a PostgreSQL database connection string under a callable alias and username.
     If 'default' is set to True, this username will be used as the default for the given alias. Saves as:
+
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
-        -   host (str):                 Database host server
-        -   database (str):             Database name
-        -   username (str):             Username
-        -   password (str):             Password
-        -   port (str | int, optional): Port. Defaults to 5432.
-        -   default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
+        alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        host (str):                 Database host server
+        database (str):             Database name
+        username (str):             Username
+        password (str):             Password
+        port (str | int, optional): Port. Defaults to 5432.
+        default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
     """
 
     platform = "postgresql"
@@ -326,16 +333,17 @@ def save_connection_MySQL(
     """
     Save a MySQL database connection string under a callable alias and username.
     If 'default' is set to True, this username will be used as the default for the given alias. Saves as:
+
         {username}@{alias} -> {connection_string}
 
     Args:
-        -   alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
-        -   host (str):                     Database host server
-        -   database (str):                 Database name
-        -   username (str):                 Username
-        -   password (str):                 Password
-        -   port (str | int, optional):     Port. Defaults to 3306.
-        -   default (bool, optional):       If True, saves username as default for database alias. Defaults to False.
+        alias (str):                    Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        host (str):                     Database host server
+        database (str):                 Database name
+        username (str):                 Username
+        password (str):                 Password
+        port (str | int, optional):     Port. Defaults to 3306.
+        default (bool, optional):       If True, saves username as default for database alias. Defaults to False.
     """
 
     platform = "mariadb"
@@ -357,7 +365,7 @@ def save_connection_MySQL(
 ### DuckDB ###
 def save_connection_DuckDB(
     alias: str,
-    database: str | None,
+    database: str | None = None,
     autosave: bool = False,
 ) -> None:
     """
@@ -367,11 +375,11 @@ def save_connection_DuckDB(
     to the database. If not appended with .duckdb or .db, .duckdb will be automatically appended.
 
     Args:
-        -   alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
-        -   database (str | None):      Leave blank for an in-memory DuckDB database, or provide a path to a duckdb database
-        -   username (str):             Username
-        -   password (str):             Password
-        -   default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
+        alias (str):                Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        database (str | None):      Leave blank for an in-memory DuckDB database, or provide a path to a duckdb database
+        username (str):             Username
+        password (str):             Password
+        default (bool, optional):   If True, saves username as default for database alias. Defaults to False.
     """
 
     platform = "duckdb"

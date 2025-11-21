@@ -6,7 +6,7 @@ from math import trunc
 from pathlib import Path
 from typing import Callable, ParamSpec, TypeVar
 
-from IPython import get_ipython
+from IPython.core.getipython import get_ipython
 from keyring import get_password, set_password
 from pandas import DataFrame
 from pandas.api.types import is_numeric_dtype
@@ -172,7 +172,6 @@ def _load_filepaths(
     warning_list = []
     if isinstance(filepaths, (str, Path)):
         filepaths = [filepaths]  # type: ignore[assignment]
-
     fps = [Path(fp) for fp in filepaths]  # type: ignore[union-attr]
 
     for filepath in fps:
@@ -188,7 +187,7 @@ def _load_filepaths(
         # Process filepath if directory
         elif filepath.is_dir():
             number_of_files = 0
-            for file in filepath.iterdir():
+            for file in sorted(filepath.iterdir()):
                 if _check_filetype(file, extensions):
                     number_of_files += 1
                     filepath_list.append(file)
@@ -230,12 +229,14 @@ def __match_instruction_comments(sql: str, instruction: str) -> list[str]:
 
 def _extract_instruction(sql: str, instruction: str) -> str | None:
     """Extract the value assigned to an instruction like `$instruction=value`."""
-    for comment in __match_instruction_comments(sql, instruction):
-        try:
-            return comment.split("=", 1)[1].strip()
-        except IndexError as e:
-            raise IndexError("Have you forgotten to add '=' to the $variable?") from e
-    return None
+    comments = __match_instruction_comments(sql, instruction)
+    values = [comment.partition("=")[-1].strip() for comment in comments]
+    try:
+        if not values:
+            return None
+        return values[-1]
+    except IndexError as e:
+        raise IndexError("Have you forgotten to add '=' to the $variable?") from e
 
 
 def _count_instructions(sql: str, instruction: str) -> int:
@@ -247,7 +248,6 @@ def _count_instructions(sql: str, instruction: str) -> int:
 def _check_credentials(
     database_alias: str, username: str | None = None
 ) -> tuple[str, str, str]:
-    # sourcery skip: move-assign
     DEFAULT_USERNAME = "DEFAULT_USERNAME"
 
     if username is not None:
@@ -258,7 +258,9 @@ def _check_credentials(
 
     if username is None:
         raise ValueError(
-            f"No username provided, and no default username set for database '{database_alias}'. Run 'kraken.save_connecton_xxx' to save an alias, with default=True to save as the default username for this connection."
+            f"No username provided, and no default username set for database '{database_alias}'. "
+            + "Run 'kraken.save_connection_xxx' to save an alias, with default=True to save as the "
+            + "default username for this connection."
         )
 
     connection_json = decode(username, database_alias)
@@ -285,7 +287,7 @@ def is_notebook() -> bool:
         return False  # Probably standard Python interpreter
 
 
-### Set Engine Path Conveniencer ###
+### Set Engine Path Convenience ###
 def get_engine_path(filepath: str = "") -> str:
     """Convenience function to return the directory of the current file. Can be left blank for a Jupyter Notebook, otherwise enter "get_engine_path(__file__)".
 
@@ -460,10 +462,10 @@ def generate_where_clause(
 
     else:
         for start_idx in range(0, len(df), batch_size):
-            batch = df.iloc[start_idx : start_idx + batch_size]
+            batch = df.iloc[start_idx : start_idx + batch_size]  # type: ignore
             batch_conditions = []
 
-            for _, row in batch.iterrows():
+            for _, row in batch.iterrows():  # type: ignore
                 condition = where.format(**row.to_dict())
                 batch_conditions.append(f"({condition})")
 

@@ -230,14 +230,6 @@ def test_convert_headers_none(mixed_type_dataframe: pd.DataFrame) -> None:
     assert actual_df.columns.tolist() == original_columns
 
 
-### Test that header conversion occurs in place
-def test_convert_headers_inplace(mixed_type_dataframe: pd.DataFrame) -> None:
-    expected_columns = ["INT_COLUMN", "FLOAT_COLUMN", "STR_COLUMN", "MIXED_COLUMN"]
-    input_df = mixed_type_dataframe.copy()
-    _convert_headers(input_df, convert_header_case="upper", inplace=True)
-    assert input_df.columns.tolist() == expected_columns
-
-
 ### Test that dtype conversion works on complex dataframe
 def test_dtype_conversion_complex() -> None:
     df = get_complex_dataframe()
@@ -649,14 +641,12 @@ def test_correct_null_uploading() -> None:
         table=TEST_UPLOAD_TABLE,
         schema=MAIN_TEST_SCHEMA,
     )
-    check = checker.execute(
-        f"""
+    check = checker.execute(f"""
             SELECT COUNT(*) AS count
             FROM {MAIN_TEST_SCHEMA}.{TEST_UPLOAD_TABLE}
             WHERE  name     IS NULL
                 OR age      IS NULL
-                OR active   IS NULL"""
-    )
+                OR active   IS NULL""")
     assert check["count"].iloc[0] == 3  # type: ignore
 
     # Clean Up

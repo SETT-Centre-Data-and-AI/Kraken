@@ -16,9 +16,9 @@ class Parser:
 
     def __init__(self, platform: str | None, feedback: bool = False) -> None:
         self.config: PlatformConfig = get_platform_config(platform)
-        self.input_sql: str | None = None
-        self.comment_suppressed_sql: str | None = None
-        self.processing_sql: str | None = None
+        self.input_sql: str = ""
+        self.comment_suppressed_sql: str = ""
+        self.processing_sql: str = ""
         self.replacements: list[Replacement] = []
         self.regions: list[Region] = []
         self.comments: list[Region] = []
@@ -98,11 +98,11 @@ class Parser:
             return value[1:-1]
         return value
 
-    def __supress_comments(self) -> None:
+    def __suppress_comments(self) -> None:
         self.__attach_scanner(comment_only_mode=True)
-        self.scanner.scan_sql()
-        self.comment_suppressed_sql = self.scanner.zone_suppressed_sql
-        self.comments = self.scanner.regions
+        self.scanner.scan_sql()  # type: ignore
+        self.comment_suppressed_sql = self.scanner.zone_suppressed_sql  # type: ignore
+        self.comments = self.scanner.regions  # type: ignore
         self.__detach_scanner()
 
     ### Variable Extraction ###
@@ -113,7 +113,9 @@ class Parser:
 
         if declare_pattern:
             matches: list[tuple[str, str]] = re.findall(
-                declare_pattern, sql, re.IGNORECASE
+                declare_pattern,
+                sql,
+                re.IGNORECASE,
             )
             declarations = {
                 var_name: self.__strip_one_quote(var_value)
@@ -179,14 +181,18 @@ class Parser:
         # Process variable declarations
         if declare_pattern:
             for match in re.finditer(
-                declare_pattern, self.input_sql, flags=re.IGNORECASE
+                declare_pattern,
+                self.input_sql,
+                flags=re.IGNORECASE,
             ):
                 self.__replace_declaration(match)
 
         # Process variable usages
         if self.config.replace_all_declare_usages and declare_usage_pattern:
             for match in re.finditer(
-                declare_usage_pattern, self.input_sql, flags=re.IGNORECASE
+                declare_usage_pattern,
+                self.input_sql,
+                flags=re.IGNORECASE,
             ):
                 self.__replace_declaration_usage(match)
 
@@ -247,7 +253,9 @@ class Parser:
 
         if not splits or not split_queries:
             self.__append_query(
-                query=sql, query_start_index=0, query_end_index=len(sql)
+                query=sql,
+                query_start_index=0,
+                query_end_index=len(sql),
             )
             return
 
@@ -340,7 +348,7 @@ class Parser:
     def print_differences(self) -> None:
         print(self.get_differences())
 
-    def get_summary_report(self, return_report: bool = True):
+    def get_summary_report(self, return_report: bool = True) -> str | None:
         count_queries = len(self.queries)
         count_empty = len(self.empty_queries)
         count_variables = len(self.start_variables)
@@ -387,8 +395,11 @@ Differences
 """
         self.__say(summary_report)
         self.summary_report = summary_report
+
         if return_report:
             return summary_report
+        else:
+            return None
 
     ### Utilisation ###
     def parse_sql(
@@ -402,7 +413,7 @@ Differences
         self.__set_user_variables(user_variables)
 
         # Process Variables
-        self.__supress_comments()
+        self.__suppress_comments()
         self.__extract_variables()
         self.__set_final_variables()
         self.__identify_variable_replacements()
@@ -410,8 +421,8 @@ Differences
 
         # Identify Regions & Splits
         self.__attach_scanner()
-        self.scanner.scan_sql()
-        self.regions = self.scanner.regions
+        self.scanner.scan_sql()  # type: ignore
+        self.regions = self.scanner.regions  # type: ignore
         self.__detach_scanner()
 
         # Split Queries
