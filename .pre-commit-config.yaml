@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
         name: Check for files larger than 10 MB
@@ -27,14 +27,14 @@ repos:
   #       language: python
 
   - repo: https://github.com/psf/black
-    rev: 25.1.0
+    rev: 25.11.0
     hooks:
       - id: black
         args: [--line-length=88, --fast, --preview]
 
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.6
+    rev: v0.14.5
     hooks:
       - id: ruff
         args: ["--select=E,F,W,C90,B,B9,I", "--ignore=E501,B006,C901", "--extend-fixable=B007", "--fix"]

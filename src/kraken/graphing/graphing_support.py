@@ -15,7 +15,7 @@ def _initialise_graph_dataframe(
         ValueError: df must be a DataFrame or object containing a df
 
     Returns:
-        _type_: DataFrame
+        DataFrame: DataFrame
     """
     if not isinstance(df, DataFrame):
         try:
@@ -44,7 +44,7 @@ def _initialise_graph_dataframe(
 
 
 def aggregate_y(y_agg: str, values: DataFrame | Series) -> int | float | Series | None:
-    """Applies y-aggragate calculation
+    """Applies y-aggregate calculation
 
     Args:
         y_agg (str): Aggregation calculation

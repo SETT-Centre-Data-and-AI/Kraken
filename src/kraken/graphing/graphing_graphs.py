@@ -39,7 +39,8 @@ def graph_stacked(
 
     # Fill any missing group_colour/x category combinations with 0 and apply group sorting
     all_combinations = pd.MultiIndex.from_product(
-        [df[x].unique(), df[group_colour].unique()], names=[x, group_colour]
+        [df[x].unique(), df[group_colour].unique()],  # type: ignore
+        names=[x, group_colour],
     ).to_frame(index=False)
     df = all_combinations.merge(df, on=[x, group_colour], how="left").fillna({y: 0})
 

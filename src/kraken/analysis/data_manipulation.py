@@ -22,7 +22,7 @@ def check_df_integers(df: DataFrame) -> DataFrame:
     """
     df_original_columns = df.columns
     if df.columns.has_duplicates:
-        df.columns = pd.io.common.dedup_names(df.columns, is_potential_multiindex=False)  # type: ignore[attr-defined]
+        df.columns = pd.io.common.dedup_names(df.columns, is_potential_multiindex=False)
     for column in df.columns:
         if df[column].isna().all():
             continue
@@ -72,7 +72,7 @@ def examine(
         df_name (str, optional): Name of the originating dataframe. Defaults to "df".
         unique_ceiling (int, optional): Ceiling below which a distinct number of values in a column will be included in 'category calculations'. Defaults to 10.
         show_results (bool, optional): Display results in python/notebook readouts. Defaults to True.
-        return_results (bool, optional): Returns results as StatsPack. Defaults to False, returing None.
+        return_results (bool, optional): Returns results as StatsPack. Defaults to False, returning None.
 
     Returns:
         StatsPack: Tuple including df name, stats dataframe, and category coverage dataframe.
@@ -120,7 +120,7 @@ def examine(
         # Numeric Calcs
         q1 = df[column].quantile(0.25) if numeric else None
         q3 = df[column].quantile(0.75) if numeric else None
-        iqr = q3 - q1 if numeric else None
+        iqr = q3 - q1 if numeric else None  # type: ignore
 
         # Append statistics
         stats_list.append(
@@ -140,12 +140,12 @@ def examine(
                     else None
                 ),
                 "skewness": (
-                    round(df[column].astype("float").skew(), rounding)
+                    round(df[column].astype("float").skew(), rounding)  # type: ignore
                     if numeric
                     else None
                 ),
                 "kurtosis": (
-                    round(df[column].astype("float").kurtosis(), rounding)
+                    round(df[column].astype("float").kurtosis(), rounding)  # type: ignore
                     if numeric
                     else None
                 ),
@@ -163,8 +163,8 @@ def examine(
                 "iqr_outliers": (
                     round(
                         df[
-                            (df[column] < q1 - 1.5 * iqr)
-                            | (df[column] > q3 + 1.5 * iqr)
+                            (df[column] < q1 - 1.5 * iqr)  # type: ignore
+                            | (df[column] > q3 + 1.5 * iqr)  # type: ignore
                         ].shape[0],
                         rounding,
                     )
@@ -188,7 +188,7 @@ def examine(
                     }
                     for value, count in value_counts.items()
                 ],
-                key=lambda x: x["coverage_percentage"],
+                key=lambda x: x["coverage_percentage"],  # type: ignore
                 reverse=True,
             )
 

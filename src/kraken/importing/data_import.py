@@ -14,18 +14,20 @@ from kraken.support.support import _check_filetype, _load_filepaths, calculate_r
 def extract_spreadsheets(
     filepaths: str | list[str] | Path | list[Path], clean_df: bool = True, **kwargs: Any
 ) -> ResultList:
-    """
-        -   Takes paths, or list of paths, to spreadsheet files or directories of spreadsheet files and outputs a list of results with dataframes
-        -   Outputs list in order of user directory/file input
-        -   Raises errors if a filepath does not point to a spreadsheet file or a valid directory, or if no spreadsheet files are detected
-        -   Raises warnings if any given directory filepath returns no files
+    """Takes paths, or list of paths, to spreadsheet files or directories of spreadsheet
+    files and outputs a list of results with dataframes. Outputs list in order of user
+    directory/file input. Raises errors if a filepath does not point to a spreadsheet
+    file or a valid directory, or if no spreadsheet files are detected. Raises warnings
+    if any given directory filepath returns no files.
 
     Args:
-        -   filepaths (str | list[str]): Path or list of paths to spreadsheet files or directories of spreadsheet files
-        -   clean_df (bool): Checks DataFrame after pandas generation and applies cleaning, including converting float64 to Int64 if applicable (recommended).
+        filepaths (str | list[str]): Path or list of paths to spreadsheet files or
+            directories of spreadsheet files
+        clean_df (bool): Checks DataFrame after pandas generation and applies cleaning,
+            including converting float64 to Int64 if applicable (recommended).
 
     Returns:
-        -   list: List of results, consisting of tuples as: (filename, df name, dataframe, df, filepath)
+        list: List of results, consisting of tuples as: (filename, df name, dataframe, df, filepath)
     """
     start = datetime.now()
     supported_extensions = ["csv", "xlsx", "xls"]
@@ -72,7 +74,8 @@ def extract_spreadsheets(
             filename = Path(filepath).name
             readout.print(f" - From xlsx '{filename}'...")
             with pd.ExcelFile(filepath) as file:
-                for df_name in file.sheet_names:
+                for sheet_name in file.sheet_names:
+                    df_name = str(sheet_name)
                     df = file.parse(
                         df_name,
                         keep_default_na=keep_default_na,

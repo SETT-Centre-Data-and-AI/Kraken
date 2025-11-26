@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+__pycache__
 *.py[cod]
 *$py.class
 tests/outputs
@@ -40,6 +41,7 @@ dmypy.json
 
 # Secrets
 *.env
+*.yaml
 
 # VSCode
 *.vscode
@@ -59,14 +61,24 @@ venv.bak/
 *.ipynb
 *.xltx
 
-# Project Specific
-notebooks/
-
-# Sensitive files
-Save Credentials*
-*.yaml
-
-# Project Keep
+# Keep
 !*.pre-commit-config.yaml
 !*.github/workflows/*.yaml
+
+# Project Specific
+notebooks/
+Save Credentials*
+
+# Databases
+*.duckdb
+*.duckdb.wal
+*.db
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+*.s3db
+*.sl3
+
+# Project Keep
 !*/config_template/*

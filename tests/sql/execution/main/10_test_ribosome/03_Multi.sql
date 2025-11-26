@@ -1,10 +1,12 @@
---$Database = RESEARCH
---$Dataframe = Single
-SELECT TOP 1 0
-FROM sandbox.INFORMATION_SCHEMA.TABLES
+-- $Database = KRAKEN_TEST_MAIN
+-- $Dataframe = Single
+SELECT 0 AS ID
 ;
 
---$Dataframe = Multiple
-SELECT TOP 1 1 FROM sandbox.INFORMATION_SCHEMA.TABLES
-SELECT TOP 1 2 FROM sandbox.INFORMATION_SCHEMA.TABLES
+-- $Dataframe = Multiple
+SELECT 1 AS ID
+;
+
+-- $Dataframe = Multiple_02
+SELECT 2 AS ID
 ;

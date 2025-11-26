@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
-from typing import Literal
+from typing import Any, Literal
 
 from pandas import DataFrame
 
@@ -35,6 +35,7 @@ def execute(
         ]
         | None
     ) = None,
+    **kwargs: Any,
 ) -> DataFrame | list[DataFrame]:
     """
     Executes entered SQL against a given database alias and returns DataFrame of results, if applicable.
@@ -45,17 +46,19 @@ def execute(
     `connector.execute(query='query', *args)`
 
     Args:
-        -   alias (str): Database alias to execute SQL against.
-        -   query (str): SQL to execute. Supports single queries.
-        -   query_name (str, optional): Query name for user feedback, else readouts will provide a SQL snippet.
-        -   username (str, optional): If blank, Kraken will use the default username for the given alias. Otherwise,
+        alias (str): Database alias to execute SQL against.
+        query (str): SQL to execute. Supports single queries.
+        query_name (str, optional): Query name for user feedback, else readouts will provide a SQL snippet.
+        username (str, optional): If blank, Kraken will use the default username for the given alias. Otherwise,
             Kraken will fetch saved credentials for the given username/database alias pair. Defaults to None.
-        -   batch_size (int): Downloads rows in batches. Use `batch_size=0` to fetch all data without batching.
-        -   clean_df (bool): Checks DataFrame after pandas generation and applies cleaning, including converting
+        batch_size (int): Downloads rows in batches. Use `batch_size=0` to fetch all data without batching.
+        clean_df (bool): Checks DataFrame after pandas generation and applies cleaning, including converting
             float64 to Int64 if applicable (recommended).
-        -   isolation_level (Literal["SERIALIZABLE", "REPEATABLE READ", "READ COMMITTED", "READ UNCOMMITTED", "AUTOCOMMIT"] | None): SQL Alchemy isolation level. Defaults to None. If errors are raised related to not being able to perform
-            queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT". This will override the ability to
-            commit and rollback using the Connector, so this should be handled within SQL.
+        isolation_level (Literal["SERIALIZABLE", "REPEATABLE READ", "READ COMMITTED", "READ UNCOMMITTED", "AUTOCOMMIT"] | None):
+            SQL Alchemy isolation level. Defaults to None. If errors are raised related to not being able to perform
+            queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT".
+            This will override the ability to commit and rollback using the Connector, so this should be handled within SQL.
+        kwargs: Forwards keyword arguments to create_connector, which in turn forwards them to SaConnector().create_engine.
 
     Returns:
         Results (DataFrame): Results of query (if data returned)
@@ -73,7 +76,7 @@ def execute(
     df = None
     query_name = f"'{query_name}'" if query_name else None
     connector = create_connector(
-        alias=alias, username=username, isolation_level=isolation_level
+        alias=alias, username=username, isolation_level=isolation_level, **kwargs
     )
     connector.connect(allow_feedback=False)
     df = connector.execute(
@@ -90,12 +93,36 @@ def execute(
 
 def create_db_sql_mapping(
     query_list: QueryList,
-) -> dict[tuple[Path, str, str | None, str | None], QueryList]:
-    mapping: dict[tuple[Path, str, str | None], QueryList] = {}
+) -> dict[
+    tuple[
+        Path,
+        str,
+        str | None,
+        str | None,
+        int | None,
+    ],
+    QueryList,
+]:
+    mapping: dict[
+        tuple[
+            Path,
+            str,
+            str | None,
+            str | None,
+            int | None,
+        ],
+        QueryList,
+    ] = {}
 
     for query in query_list:
         mapping.setdefault(
-            (query.filepath, query.filename, query.db_alias, query.isolation_level),
+            (
+                query.filepath,
+                query.filename,
+                query.db_alias,
+                query.isolation_level,
+                query.arraysize,
+            ),
             [],  # type: ignore[arg-type]
         ).append(query)
 
@@ -121,19 +148,23 @@ def execute_sql(
 ) -> ResultList:
     """
     Summary:
-        -   Takes a list of Querys, as prepared and output by extract_sql()
-        -   Executes this list against the databases set within the Querys
-        -   Returns a list of Results (class = ResultList)
+        Takes a QueryList of Query objects, as prepared and output by extract_sql(). Executes this list against the
+        databases set within the Query objects. Returns a list of Results (class = ResultList).
 
     Args:
-        query_list (list[Query]): List of Querys prepared by extract_sql()
-        username (str, optional): Overriding usename to fetch database credentials. Defaults to None. WARNING: Kraken will attempt to use this username to execute all queries.
-        clean_df (bool): Checks each DataFrame after pandas generation and applies cleaning, including converting float64 to Int64 if applicable (recommended).
+        query_list (list[Query]): List of QueryList of Query objects prepared by extract_sql()
+        username (str, optional): Overriding username to fetch database credentials. Defaults to None. WARNING:
+            Kraken will attempt to use this username to execute all queries.
+        clean_df (bool): Checks each DataFrame after pandas generation and applies cleaning, including converting
+            float64 to Int64 if applicable (recommended).
         batch_size (int): Downloads rows in batches. Use `batch_size=0` to fetch all data without batching.
-        concurrent (bool): If True, executes all SQL files concurrently. Queries within each SQL file will still execute sequentially. Defaults to False.
-        isolation_level (Literal["SERIALIZABLE", "REPEATABLE READ", "READ COMMITTED", "READ UNCOMMITTED", "AUTOCOMMIT"] | None): SQL Alchemy isolation level, overriding any and all --$Isolation_level flags in SQL files. Defaults to None. If errors are raised related
-        to not being able to perform queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT". This will override the ability to
-        commit and rollback using the Connector, so this should be handled within SQL.
+        concurrent (bool): If True, executes all SQL files concurrently. Queries within each SQL file will still
+            execute sequentially. Defaults to False.
+        isolation_level (Literal["SERIALIZABLE", "REPEATABLE READ", "READ COMMITTED", "READ UNCOMMITTED", "AUTOCOMMIT"] | None):
+            SQL Alchemy isolation level, overriding any and all --$Isolation_level flags in SQL files. Defaults to None.
+            If errors are raised related to not being able to perform queries within transactions, (for example as typical
+            with Synapse databases), try using "AUTOCOMMIT". This will override the ability to commit and rollback using
+            the Connector, so this should be handled within SQL.
 
     Returns:
         ResultList: List of Results
@@ -174,7 +205,16 @@ def execute_sql(
 
 
 def __execute_all_queries(
-    db_sql_mapping: dict[tuple[Path, str, str | None], QueryList],
+    db_sql_mapping: dict[
+        tuple[
+            Path,
+            str,
+            str | None,
+            str | None,
+            int | None,
+        ],
+        QueryList,
+    ],
     username: str | None,
     clean_df: bool,
     batch_size: int | None,
@@ -197,11 +237,17 @@ def __execute_all_queries(
     concurrent_progress = None
 
     def _process_sql_file(
-        file_key: tuple[Path, str, str | None, str | None],
+        file_key: tuple[
+            Path,
+            str,
+            str | None,
+            str | None,
+            int | None,
+        ],
         query_list: QueryList,
         concurrent: bool = False,
     ) -> list[Result]:
-        (_, filename, db_alias, file_isolation_level) = file_key
+        (_, filename, db_alias, file_isolation_level, arraysize) = file_key
         results = []
 
         text = (
@@ -221,7 +267,8 @@ def __execute_all_queries(
         connector = create_connector(
             alias=db_alias,
             username=username,
-            isolation_level=isolation_level or file_isolation_level,
+            isolation_level=isolation_level or file_isolation_level,  # type: ignore
+            arraysize=arraysize,
         )
         if not concurrent:
             readout.print(

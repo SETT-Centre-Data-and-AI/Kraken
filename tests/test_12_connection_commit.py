@@ -1,62 +1,67 @@
 import pytest  # noqa
 from support import integrity  # noqa
-from support.connection import get_main_test_connector  # noqa
-from support.credentials import (
-    setup_main_test_credentials,
-    get_credentials_for_main_connection_test,
-)  # noqa
+from support.config import config
 
-config = get_credentials_for_main_connection_test()
-DATABASE = config[integrity.DATABASE]
-SCHEMA = config[integrity.SCHEMA]
 TABLE = "test_commit"
-FQN = f"{DATABASE}.{SCHEMA}.{TABLE}"
+SCHEMA = config.main_test.schema
+FQN = f"{SCHEMA}.{TABLE}"
 
 COLUMN = "ID"
 ORIGINAL = "original"
 EDITED = "edited"
 
+main_test = config.main_test
+
 
 # Test that commits can be controlled by connectors
-def test_template_main():
-    with setup_main_test_credentials():
-        # CrePrepareate Connectors
-        setup = get_main_test_connector()
-        edit = get_main_test_connector()
-        check = get_main_test_connector()
-        all_connectors = [setup, edit, check]
+@pytest.mark.skipif(main_test.fallback, reason="Using DuckDB")
+def test_template_main() -> None:
+    _credentials = main_test.setup_test_credentials()
+    main_test.get_connector()
+    # Create Connectors
+    setup = main_test.get_connector()
+    edit = main_test.get_connector()
+    check = main_test.get_connector()
+    all_connectors = [setup, edit, check]
 
     for connector in all_connectors:
         connector.connect()
 
-    # Setup Table
-    setup.execute(f"DROP TABLE IF EXISTS {FQN}", commit=True, close=False)
-    setup.execute(
-        f"SELECT '{ORIGINAL}' AS {COLUMN} INTO {FQN}", commit=True, close=False
+    # SQL
+    setup_drop_table = f"DROP TABLE IF EXISTS {FQN}"
+    sql_add_data = (
+        f"CREATE TABLE {FQN} AS SELECT '{ORIGINAL}' AS '{COLUMN}' "
+        if main_test.fallback
+        else f"SELECT '{ORIGINAL}' AS {COLUMN} INTO {FQN}"
     )
+    sql_update = f"UPDATE {FQN} SET ID = '{EDITED}'"
+    sql_select = f"SELECT * FROM {FQN}"
+    sql_select_no_lock = f"SELECT * FROM {FQN} WITH (NOLOCK)"
+
+    # Setup table
+    setup.execute(setup_drop_table, commit=True, close=False)
+    setup.execute(sql_add_data, commit=True, close=False)
 
     # Edit and Check Without Commit
-    edit.execute(f"UPDATE {FQN} SET ID = '{EDITED}'", commit=False, close=False)
+    edit.execute(sql_update, commit=False, close=False)
     assert (
-        edit.execute(f"SELECT * FROM {FQN}", commit=False, close=False)[COLUMN].iloc[0]
+        edit.execute(sql_select, commit=False, close=False)[COLUMN].iloc[0]  # type: ignore
         == EDITED
     )
     assert (
-        check.execute(f"SELECT * FROM {FQN} WITH (NOLOCK)", commit=True, close=False)[
-            COLUMN
-        ].iloc[0]
+        check.execute(sql_select_no_lock, commit=True, close=False)[COLUMN].iloc[0]  # type: ignore
         == EDITED
     )
 
     # Close without commiting and check again
     edit.close_connection()
     assert (
-        check.execute(f"SELECT * FROM {FQN}", commit=True, close=False)[COLUMN].iloc[0]
+        check.execute(sql_select, commit=True, close=False)[COLUMN].iloc[0]  # type: ignore
         == ORIGINAL
     )
 
     # Finish
-    setup.execute(f"DROP TABLE IF EXISTS {FQN}", commit=True, close=False)
+    setup.execute(setup_drop_table, commit=True, close=False)
 
     for connector in all_connectors:
         connector.close_connection()

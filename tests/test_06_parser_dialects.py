@@ -10,13 +10,14 @@ from kraken.parsing.parsing import Parser
 from kraken.platforms.config import platforms
 
 
+### Helper Class ###
 class PlatformTest:
     def __init__(self, platform: str):
         """Parsing test coordinator for a given platform. To set up parsing tests
         for a platform, under the `tests/sql/parsing` we should have the structure:
 
         `platform/` (folder name should be the name of the platform, case-sensitive)
-         - `test_n/` (minumum of one test, folder name not enforced but should be in order)
+         - `test_n/` (minimum of one test, folder name not enforced but should be in order)
            - `input.sql` (input SQL, file name enforced)
            - `outputs/` (folder for each expected output query, folder name enforced)
             - `1.sql` (first expected output query - integer filename not enforced but should be in order)
@@ -33,7 +34,7 @@ class PlatformTest:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(platform='{self.platform}', parsing_tests={len(self.parsing_tests)})"
 
-    def load_parsing_tests(self):
+    def load_parsing_tests(self) -> None:
         """Instantiates a ParsingTest class for each test in the platform folder."""
         test_folders: list[Path] = []
         for file in self.platform_folder.glob("*"):
@@ -49,7 +50,7 @@ class PlatformTest:
                 f"No tests found for platform '{self.platform}'. Check: '{self.platform_folder}'"
             )
 
-    def run_tests(self):
+    def run_tests(self) -> None:
         if not len(self.parsing_tests):
             raise ValueError(
                 "No parsing tests to run. First run `self.load_parsing_tests()`"
@@ -63,10 +64,10 @@ class ParsingTest:
         self.platform: str = platform
         self.test_folder: Path = test_folder
         self.name: str = test_folder.name
-        self.input: str = None
-        self.expected_outputs: list[str] = None
+        self.input: str | None = None
+        self.expected_outputs: list[str] | None = None
         self.parser = Parser(platform=platform, feedback=False)
-        self.reports: list[tuple[str, str]] = None
+        self.reports: list[tuple[str, str]] | None = None
         self.__get_input_sql()
         self.__get_output_sql()
 
@@ -96,7 +97,7 @@ class ParsingTest:
         """
         self.expected_outputs = list()
         output_folder = self.test_folder / SUFFIX_OUTPUTS
-        for filepath in output_folder.glob("*.sql"):
+        for filepath in sorted(output_folder.glob("*.sql")):
             with filepath.open() as file:
                 output = file.read()
                 self.expected_outputs.append(output)
@@ -133,8 +134,11 @@ class ParsingTest:
 
     def get_report(self) -> str:
         report = []
-        for i, (status, sql_diff) in enumerate(self.reports):
-            report.append(f"Output {i + 1} ({status}):\n{sql_diff}\n-----------------")
+        if self.reports is not None:
+            for i, (status, sql_diff) in enumerate(self.reports):
+                report.append(
+                    f"Output {i + 1} ({status}):\n{sql_diff}\n-----------------"
+                )
 
         return "\n\n".join(report)
 
@@ -146,7 +150,19 @@ class ParsingTest:
         Checks correct number of outputs, and errors if disparity in count or
         content of each query."""
         self.reports = list()
+
+        if not self.input:
+            raise ValueError(
+                f"No input SQL found for test. Check: '{self.test_folder}'"
+            )
+
+        if not self.expected_outputs:
+            raise ValueError(
+                f"No expected outputs found for test. Check: '{self.test_folder}'"
+            )
+
         self.parser.parse_sql(input_sql=self.input)
+
         assert len(self.parser.queries) == len(self.expected_outputs), (
             "Disparity in number of expected vs parsed outputs "
             + f"({self.platform}/{self.name}):"
@@ -170,15 +186,35 @@ class ParsingTest:
 
         assert failures == 0, (
             f"Parsed query differs from expectation ({self.platform}/{self.name}):"
+            + "\n\nInput SQL:"
+            + f"{self.input}"
             + f"\n\n{self.get_report()}"
         )
 
 
-def test_all_platforms():
+### Helpers ###
+def collect_parsing_tests() -> list[ParsingTest]:
+    all_tests: list[ParsingTest] = []
     for platform in platforms:
         platform_test = PlatformTest(platform)
         platform_test.load_parsing_tests()
-        platform_test.run_tests()
+        all_tests.extend(platform_test.parsing_tests)
+    return all_tests
+
+
+### ====================== ###
+### ---------TESTS---------###
+### ====================== ###
+
+
+@pytest.mark.parametrize(
+    "parsing_test",
+    collect_parsing_tests(),
+    ids=lambda t: f"{t.platform}/{t.name}",
+)
+def test_parser_dialects(parsing_test: ParsingTest) -> None:
+    """Run a single parsing test (one platform + one tes)."""
+    parsing_test.run_test()
 
 
 if __name__ == "__main__":

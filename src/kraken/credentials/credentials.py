@@ -11,7 +11,8 @@ from kraken.exceptions import CredentialError
 
 
 class Credentials:
-    """A Kraken Credential object, holding details about a service including its connections string"""
+    """A Kraken Credential object, holding details about a service including its
+    connections string"""
 
     def __init__(
         self,

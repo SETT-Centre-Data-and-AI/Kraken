@@ -17,18 +17,27 @@ def save_connection(
     autosave: bool = False,
 ) -> None:
     """
-    Save a specific database connection string to credential manager under a callable alias and username.
-    Kraken will first attempt a connection to the database, and upon failure, request confirmation to save.
-    If 'default' is set to True, this username will be used as the default for the given alias. Saves as:
+    Save a specific database connection string to credential manager under
+    a callable alias and username. Kraken will first attempt a connection
+    to the database, and upon failure, request confirmation to save. If
+    'default' is set to True, this username will be used as the default for
+    the given alias. Saves as:
+
         {username}@{alias} -> {connection_string}
 
     Args:
-        alias (str): Alias for the database. Connection engines can be created using this alias, and can be fed into kraken from SQL files.
+        alias (str): Alias for the database. Connection engines can be created
+            using this alias, and can be fed into kraken from SQL files.
         connection_string (str): Database connection string
-        username (str, optional): Username. If None, Kraken will save the username as "integrated" and later interpret this to be an integrated connection. Defaults to None.
-        platform (str, optional): Database platform. Affects downstream SQL parsing and execution behaviour. Defaults to None.
-        default (bool, optional): If True, saves username as default for database alias. Defaults to False.
-        autosave (bool, optional): If True, Kraken will save the connection regardless of connection failure.
+        username (str, optional): Username. If None, Kraken will save the username
+            as "integrated" and later interpret this to be an integrated connection.
+            Defaults to None.
+        platform (str, optional): Database platform. Affects downstream SQL parsing
+            and execution behaviour. Defaults to None.
+        default (bool, optional): If True, saves username as default for database
+            alias. Defaults to False.
+        autosave (bool, optional): If True, Kraken will save the connection regardless
+            of connection failure.
     """
     username = username if username else INTEGRATED_TOKEN
     platform = "unknown" if platform is None else platform

@@ -4,39 +4,43 @@ from kraken.classes.pack_lists import QueryList, ResultList
 from kraken.classes.packs import Query, Result
 
 from support import integrity  # noqa
-from support.credentials import setup_main_test_credentials  # noqa
+from support.config import config
+from pathlib import Path
+
+TEST_SUB_DIR = Path(__name__).stem
 
 
-def test_get_data():
+def test_get_data() -> None:
     SQL_TEST_DIR = integrity.PATH_SQL_MAIN
-    OUTPUT_TEST_DIR = integrity.PATH_OUTPUTS
 
-    with setup_main_test_credentials():
-        sql = extract_sql(SQL_TEST_DIR / "09_pack_list_test.sql")
-        results = execute_sql(sql)
-        print(results)
-        _exports = export_results(
+    _credentials = config.main_test.setup_test_credentials()
+    sql = extract_sql(SQL_TEST_DIR / "09_pack_list_test.sql")
+    results = execute_sql(sql)
+    print(results)
+    with config.setup_test_output_subdir(name=TEST_SUB_DIR) as directory:
+        export_results(
             results,
-            OUTPUT_TEST_DIR,
+            directory,
             extension="xlsx",
             overwrite=True,
             filename="Pack List Test",
         )
-        spreadsheets = extract_spreadsheets(OUTPUT_TEST_DIR)
 
-    assert sql is not None
-    assert results is not None
-    assert spreadsheets is not None
+        spreadsheets = extract_spreadsheets(directory)
 
-    assert isinstance(sql, QueryList)
-    assert isinstance(results, ResultList)
-    assert isinstance(spreadsheets, ResultList)
+        assert sql is not None
+        assert results is not None
+        assert spreadsheets is not None
 
-    assert isinstance(sql.get("Diagnosis"), Query)
-    assert isinstance(results.get("Diagnosis"), Result)
-    assert isinstance(spreadsheets.get("Diagnosis"), Result)
+        assert isinstance(sql, QueryList)
+        assert isinstance(results, ResultList)
+        assert isinstance(spreadsheets, ResultList)
 
-    results.get("Diagnosis")
+        assert isinstance(sql.get("Diagnosis"), Query)
+        assert isinstance(results.get("Diagnosis"), Result)
+        assert isinstance(spreadsheets.get("Diagnosis"), Result)
+
+        results.get("Diagnosis")
 
 
 if __name__ == "__main__":

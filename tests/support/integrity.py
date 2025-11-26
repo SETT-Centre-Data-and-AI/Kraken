@@ -1,23 +1,20 @@
+from __future__ import annotations
+
 from pathlib import Path
 
+# Paths
 PATH_TESTS = Path(__file__).parents[1]
+PATH_SQL = PATH_TESTS / "sql"
+PATH_SQL_PARSING = PATH_SQL / "parsing"
 PATH_CONFIG = PATH_TESTS / "config"
 
 PATH_CONFIG_CREDENTIALS = PATH_CONFIG / "credentials.yaml"
+PATH_CONFIG_TEMPLATE_CREDENTIALS = PATH_TESTS / "config_template/credentials.yaml"
 
-TEST_CRED_ALIAS = "KRAKEN_TEST_{suffix}"
-MAIN_ALIAS = "KRAKEN_TEST_MAIN"
-
-ALIAS = "alias"
-USERNAME = "username"
-DATABASE = "database"
-SCHEMA = "schema"
-
-CONFIG_MAIN_CONNECTION_TEST = "main_connection_test"
+# Tokens
 CONFIG_TEST_CONNECTIONS = "test_connections"
 
-PATH_SQL = PATH_TESTS / "sql"
-PATH_SQL_PARSING = PATH_SQL / "parsing"
+# Aliases
 SUFFIX_INPUT = "input.sql"
 SUFFIX_OUTPUTS = "outputs"
 

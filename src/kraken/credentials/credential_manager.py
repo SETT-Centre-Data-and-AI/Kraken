@@ -10,7 +10,8 @@ from kraken.support.support import decode, encode
 
 
 class CredentialManager:
-    """Manages the saving and fetching of Kraken connection Credential objects from the OS' secret storage (e.g. Windows Credential Manager).
+    """Manages the saving and fetching of Kraken connection Credential objects
+    from the OS' secret storage (e.g. Windows Credential Manager).
 
     Raises:
         CredentialError: Raises if a Credential cannot be found
@@ -149,7 +150,8 @@ class CredentialManager:
             platform (str): Service platform (e.g. 'oracle' or 'mssql')
             connection_string (str): sqlalchemy/pyodbc connection string
             password (str, optional): User password. Defaults to None.
-            default_username (bool, optional): If True, username is used as the default for this service. Defaults to False.
+            default_username (bool, optional): If True, username is used as the default
+                for this service. Defaults to False.
 
         Returns:
             Credentials: Connection details packaged into a Credentials object.
