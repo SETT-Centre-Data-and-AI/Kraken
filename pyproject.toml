@@ -1,6 +1,6 @@
 [project]
 name = "datakraken"
-version = "1.2.0"
+version = "1.2.3"
 description = "Kraken is a convenience package that orchestrates data extraction by integrating SQL with Python, while managing safe storage and recall of sensitive connection credentials."
 authors = [
   { name = "Cai Davis" },
@@ -81,5 +81,5 @@ name = "cz_conventional_commits"
 tag_format = "v$major.$minor.$patch$prerelease"
 version_type = "pep440"
 version_provider = "pep621"
-update_changelog_on_bump = false
+update_changelog_on_bump = true
 major_version_zero = false

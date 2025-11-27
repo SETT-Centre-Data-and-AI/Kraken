@@ -69,6 +69,13 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
+    - name: Install System Dependencies (Ubuntu)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libmariadb3 libmariadb-dev \
+          unixodbc unixodbc-dev
+
     - name: Install Build Tools
       run: |
         python -m pip install --upgrade pip
