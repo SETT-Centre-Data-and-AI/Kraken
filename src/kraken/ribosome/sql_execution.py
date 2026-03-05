@@ -242,7 +242,7 @@ def __execute_all_queries(
         query_list: QueryList,
         concurrent: bool = False,
     ) -> list[Result]:
-        (_, filename, db_alias, file_isolation_level) = file_key
+        (_, filename, db_alias, file_isolation_level, arraysize) = file_key
         results = []
 
         text = (
