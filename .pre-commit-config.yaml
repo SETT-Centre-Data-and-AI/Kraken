@@ -19,31 +19,11 @@ repos:
 
       - id: check-yaml
 
-  # - repo: https://github.com/PyCQA/docformatter
-  #   rev: v1.7.5
-  #   hooks:
-  #     - id: docformatter
-  #       args: [--wrap-summaries=88, --wrap-descriptions=88, --in-place]
-  #       language: python
-
-  - repo: https://github.com/psf/black
-    rev: 25.11.0
-    hooks:
-      - id: black
-        args: [--line-length=88, --fast, --preview]
-
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.5
+    rev: v0.14.10
     hooks:
-      - id: ruff
+      - id: ruff-check
+        types_or: [ python, pyi ]
         args: ["--select=E,F,W,C90,B,B9,I", "--ignore=E501,B006,C901", "--extend-fixable=B007", "--fix"]
-
-
-  # - repo: https://github.com/Yelp/detect-secrets
-  #   rev: v1.0.3
-  #   hooks:
-  #     - id: detect-secrets
-  #       name: detect-secrets - Detect secrets in staged code
-  #       args: [ "--baseline", ".secrets.baseline" ]
-  #       exclude: .*Pipfile.*
+      - id: ruff-format
+        types_or: [ python, pyi ]

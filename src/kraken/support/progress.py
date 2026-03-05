@@ -7,9 +7,8 @@ from threading import Thread
 from types import TracebackType
 from typing import Literal
 
-from IPython import get_ipython
-
 from kraken.support.readout import readout
+from kraken.support.support import is_notebook
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -122,8 +121,8 @@ class Progress:
         size: int = 7,
         marker: str = "|",
         complete_text: str = "Completed",
-        in_progress_colour: tuple = ("\033[38;5;214m", "\033[0m"),
-        complete_colour: tuple = ("\033[32m", "\033[0m"),
+        in_progress_colour: tuple[str, str] = ("\033[38;5;214m", "\033[0m"),
+        complete_colour: tuple[str, str] = ("\033[32m", "\033[0m"),
         format: str = "{header} ({timer}): {spinner} {suffix}",
         auto_update: bool = False,
         auto_update_interval: float = 0.5,
@@ -137,11 +136,11 @@ class Progress:
         self.direction: int = 1
         self.last_bar_length = 0
         self.complete_text: str = complete_text
-        self.in_progress_colour: tuple = in_progress_colour
-        self.complete_colour: tuple = complete_colour
+        self.in_progress_colour: tuple[str, str] = in_progress_colour
+        self.complete_colour: tuple[str, str] = complete_colour
         self.start_time: datetime = datetime.now()
         self.format: str = format
-        self.is_jupyter: bool = self.__is_jupyter()
+        self.is_jupyter: bool = is_notebook()
         self.snapshots: list = self.__generate_snapshots()
         self.auto_update: bool = auto_update
         self.active: bool = active
@@ -163,7 +162,7 @@ class Progress:
 
     def __exit__(
         self,
-        exc_type: type[BaseException],
+        exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> Literal[False]:
@@ -175,9 +174,6 @@ class Progress:
             self.__generate_bar(complete=False)
             self.show()
         return False
-
-    def __is_jupyter(self) -> bool:
-        return get_ipython() is not None
 
     def __headless_check(self) -> None:
         if not self.is_jupyter:

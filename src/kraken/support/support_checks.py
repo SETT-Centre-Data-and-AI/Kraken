@@ -1,4 +1,7 @@
+from collections.abc import Iterable, Mapping
 from typing import Any
+
+Items = Iterable[str] | Mapping[str, object]
 
 
 def _enforce_type(
@@ -29,7 +32,7 @@ def _enforce_type(
 def _enforce_type_one_of(
     variable: Any,
     variable_name: str,
-    variable_types: tuple,
+    variable_types: tuple[type, ...],
     error_message: str | None = None,
 ) -> None:
     """Check variable is a particular type.
@@ -56,17 +59,8 @@ def _enforce_type_one_of(
         raise TypeError(error_message)
 
 
-def _enforce_in_list(
-    value: str, items: list | dict | tuple | set, message: str | None = None
-) -> None:
-    message = (
-        message
-        if message
-        else f"Entered value '{value}' is not allowed. Allowed: {items}"
-    )
-
-    if not isinstance(items, list):
-        items = list(items)
-
+def _enforce_in_list(value: str, items: Items, message: str | None = None) -> None:
     if value not in items:
-        raise ValueError(message)
+        raise ValueError(
+            message or f"Entered value '{value}' is not allowed. Allowed: {list(items)}"
+        )

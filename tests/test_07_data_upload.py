@@ -22,6 +22,7 @@ from kraken.uploading.support import (
     _force_dtypes_string,
     _truncate_cols,
 )
+from kraken.uploading.uploader import Uploader
 
 ### Constants ###
 TEST_UPLOAD_TABLE = "KRAKEN_TEST_UPLOAD"
@@ -323,6 +324,30 @@ def test_failure_upload() -> None:
     # Clean Up
     drop_if_exists(checker, f"{MAIN_TEST_SCHEMA}.{TEST_UPLOAD_TABLE}")
     connector.close_connection()
+
+
+def test_upload_with_drop_does_not_forward_extra_kwargs() -> None:
+    uploader = Uploader.__new__(Uploader)
+    uploader.schema_m = f"{MAIN_TEST_SCHEMA}."
+    uploader.table = TEST_UPLOAD_TABLE
+    uploader.kwargs = {"method": "multi"}
+
+    calls = {"execute": 0, "upload": 0}
+
+    def fake_execute(query: str, commit: bool = False, close: bool = False) -> None:
+        calls["execute"] += 1
+
+    def fake_upload_dataframe(df: DataFrame, if_exists: str) -> None:
+        calls["upload"] += 1
+        assert if_exists == "append"
+
+    uploader._Uploader__execute = fake_execute  # type: ignore[attr-defined]
+    uploader._Uploader__upload_dataframe = fake_upload_dataframe  # type: ignore[attr-defined]
+
+    uploader._Uploader__upload_with_drop(DataFrame({"id": [1]}))
+
+    assert calls["execute"] == 1
+    assert calls["upload"] == 1
 
 
 ### Test that a DataFrame can be reuploaded when exists

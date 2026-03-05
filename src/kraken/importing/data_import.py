@@ -103,7 +103,7 @@ def extract_spreadsheets(
 
     stop = datetime.now()
     readout.print(
-        f"{len(spreadsheet_packs)} dataframes loaded from {len(filepaths)} files in {calculate_runtime(start,stop).message}"
+        f"{len(spreadsheet_packs)} dataframes loaded from {len(filepaths)} files in {calculate_runtime(start, stop).message}"
     )
 
     # Check for df name duplicates

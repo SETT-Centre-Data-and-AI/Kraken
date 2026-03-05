@@ -1,4 +1,5 @@
 import math
+from typing import Any
 
 import numpy as np
 from pandas import DataFrame, notnull
@@ -15,7 +16,9 @@ def _truncate_cols(df: DataFrame, max_header_length: int | None = None) -> DataF
     if not df.empty:
         if not max_header_length:
             max_header_length = int(df.columns.str.len().max())
-        renamed_cols = dict(zip(df.columns, [col[:max_header_length] for col in df], strict=True))  # type: ignore[index]
+        renamed_cols = dict(
+            zip(df.columns, [col[:max_header_length] for col in df], strict=True)  # type: ignore[index]
+        )
         return df.rename(columns=renamed_cols)
     return df
 
@@ -44,7 +47,7 @@ def _force_dtypes_string(df: DataFrame) -> DataFrame:
 
 def _convert_dtypes(
     df: DataFrame, varchar_length: int | None = None
-) -> dict[str, FLOAT | VARCHAR]:
+) -> dict[str, FLOAT[Any] | VARCHAR]:
     """
      - Creates map to convert datatype 'object' to 'varchar' upon upload to avoid uploading large CLOB data
      - if varchar_length is not entered, the column VARCHAR length will default to the current maximum string length in each column

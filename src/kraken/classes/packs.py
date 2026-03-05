@@ -5,6 +5,7 @@ from typing import Literal, overload
 
 from IPython.display import display
 from pandas import DataFrame
+from pandasql import sqldf  # type: ignore[import-untyped]
 
 from kraken.classes.data_types import StatsPack
 from kraken.graphing.graphing import graph as graph_main
@@ -227,11 +228,8 @@ class Result:
             DataFrame: Query results as DataFrame.
         """
         temp_dfs = {self.df_name: self.df}
-
-        for temp_var_name, df in temp_dfs.items():
-            locals()[temp_var_name] = df
-
-        return eval(f'sqldf("""{query}""")')  # type: ignore[no-any-return]
+        result: DataFrame = sqldf(query, env=temp_dfs)
+        return result
 
     def graph(
         self,

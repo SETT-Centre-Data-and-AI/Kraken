@@ -69,12 +69,10 @@ def test_mssql_extract_variables() -> None:
 def test_variable_replacement() -> None:
     """Test that variable replacements are applied correctly."""
     parser = mssql_parser()
-    test_sql = textwrap.dedent(
-        """
+    test_sql = textwrap.dedent("""
                                DECLARE @var1 NVARCHAR(6) = 'value1';
                                SELECT * FROM table WHERE column = var1;
-                               """
-    )
+                               """)
     user_variables = {"var1": "new_value"}
 
     parser.parse_sql(test_sql, user_variables)
@@ -211,6 +209,26 @@ WHERE   a_column LIKE '@Prefix' + '%'
     """
     parser.parse_sql(input_sql, user_variables=variables)
     assert parser.processing_sql and parser.processing_sql.strip() == output_sql.strip()
+
+
+def test_reset_clears_parser_state() -> None:
+    parser = mssql_parser()
+    parser.parse_sql("SELECT 1;")
+    assert len(parser.queries) == 1
+
+    parser.reset()
+    assert len(parser.queries) == 0
+    assert len(parser.all_queries) == 0
+    assert parser.input_sql == ""
+
+
+def test_parse_sql_does_not_accumulate_queries() -> None:
+    parser = mssql_parser()
+    parser.parse_sql("SELECT 1;")
+    parser.parse_sql("SELECT 2;")
+
+    assert len(parser.queries) == 1
+    assert parser.queries[0].sql.strip() == "SELECT 2;"
 
 
 if __name__ == "__main__":

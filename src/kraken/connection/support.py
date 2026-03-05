@@ -1,4 +1,10 @@
+import sqlalchemy
+import pyodbc
+
 ### Connection ###
+DEFAULT_ARRAYSIZE = 10_000
+
+
 def _split_pyodbc_connection_string(connection_string: str) -> dict[str, str]:
     """Separates a pyodbc-style connection string into constituent parts and returns in
     a dictionary.
@@ -37,3 +43,20 @@ def _compile_pyodbc_connection_string(
         part = f"{key.strip()}={value.strip()}"
         connection_string_parts.append(part)
     return ";".join(connection_string_parts)
+
+
+def _check_execution_error(error: Exception, platform: str = "") -> str:
+    if isinstance(error, (pyodbc.ProgrammingError, sqlalchemy.exc.ProgrammingError)):
+        e_lower = error.__str__().lower()
+        # mssql DECLARE variable error
+        if (
+            platform == "mssql"
+            and "must declare" in e_lower
+            and "variable" in e_lower
+        ):
+            return (
+                "If using DECLARE to set variables in separate queries in MSSQL, "
+                + "ensure the `--$Split=False` "
+                + "flag is used within the SQL file."
+            )
+    return str(error)

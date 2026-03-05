@@ -89,17 +89,17 @@ class PlatformConfig:
         self.multiple_db_support: bool = True
         self.sql_library: str = "sqlalchemy"
         self.default_sql_driver: str = "pyodbc"
-        self.comment_tokens: list[tuple] = [
+        self.comment_tokens: list[tuple[str, ...]] = [
             ("--", "\n"),
             ("/*", "*/"),
         ]
-        self.wrapper_tokens: list[tuple] = [
+        self.wrapper_tokens: list[tuple[str, ...]] = [
             ("'", "'"),
             ('"', '"'),
         ]
-        self.additional_wrapper_tokens: list[tuple] | None = None
+        self.additional_wrapper_tokens: list[tuple[str, ...]] | None = None
         self.split_tokens: list[tuple] = [(";", None)]
-        self.additional_split_tokens: list[tuple] | None = None
+        self.additional_split_tokens: list[tuple[str, ...]] | None = None
         self.declare_pattern: str | None = None
         self.declare_usage_pattern: str | None = None
         self.remove_declaration: bool = False

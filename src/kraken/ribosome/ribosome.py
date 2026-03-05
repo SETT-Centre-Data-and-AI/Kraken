@@ -12,7 +12,7 @@ from kraken.support.support import calculate_runtime
 
 def run(
     filepaths: str | Path | list[str] | list[Path] = "",
-    variables: dict = {},
+    variables: dict[str, str] = {},
     username: str | None = None,
     clean_df: bool = True,
     export_directory: str | None = None,

@@ -22,7 +22,7 @@ def _check_filepaths_type(filepaths: str | Path | list[str] | list[Path]) -> Non
             )
 
 
-def _check_variables_type(variables: dict) -> None:
+def _check_variables_type(variables: dict[str, str]) -> None:
     _enforce_type(
         variables,
         "variables",

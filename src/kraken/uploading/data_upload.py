@@ -114,16 +114,13 @@ def upload_results(
         - None
     """
     # Check Types
-    if type(results) is DataFrame:
+    if isinstance(results, DataFrame):
         raise TypeError(
             "'results' arugument must be a Result or ResultList class type, "
             + "and not a lone dataframe as a table name cannot be derived. "
             + "Please consider using upload_dataframe() instead."
         )
-    if type(results) not in [
-        ResultList,
-        Result,
-    ]:
+    if not isinstance(results, (ResultList, Result)):
         raise TypeError("'results' argument must be a Result or ResultList class type")
 
     if isinstance(results, Result):

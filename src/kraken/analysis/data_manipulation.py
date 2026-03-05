@@ -22,7 +22,7 @@ def check_df_integers(df: DataFrame) -> DataFrame:
     """
     df_original_columns = df.columns
     if df.columns.has_duplicates:
-        df.columns = pd.io.common.dedup_names(df.columns, is_potential_multiindex=False)
+        df.columns = pd.io.common.dedup_names(df.columns, is_potential_multiindex=False)  # type: ignore[attr-defined]
     for column in df.columns:
         if df[column].isna().all():
             continue
@@ -105,7 +105,9 @@ def examine(
         numeric = (
             False
             if df[column].dtype == "bool"
-            else True if is_numeric_dtype(df[column]) else False
+            else True
+            if is_numeric_dtype(df[column])
+            else False
         )
         if df[column].dtype == "object":
             max_length = df[column].dropna().astype(str).str.len().max()

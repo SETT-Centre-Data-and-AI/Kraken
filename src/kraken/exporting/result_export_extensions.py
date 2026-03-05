@@ -7,7 +7,7 @@ from kraken.support.readout import readout
 
 ### File Preparation ###
 # Prepare xlsx
-def _prepare_results_xlsx(export_pack: dict) -> bytes:
+def _prepare_results_xlsx(export_pack: dict[str, pd.DataFrame]) -> bytes:
     buffer = BytesIO()
     with pd.ExcelWriter(
         path=buffer,
@@ -23,7 +23,9 @@ def _prepare_results_xlsx(export_pack: dict) -> bytes:
 
 
 # Prepare csv
-def _prepare_results_csv(export_pack: dict, delimiter: str = ",") -> bytes:
+def _prepare_results_csv(
+    export_pack: dict[str, pd.DataFrame], delimiter: str = ","
+) -> bytes:
     buffer = BytesIO()
     for dataframe in export_pack.values():
         dataframe.to_csv(buffer, sep=delimiter, index=False)
@@ -31,7 +33,7 @@ def _prepare_results_csv(export_pack: dict, delimiter: str = ",") -> bytes:
 
 
 # Prepare parquet
-def _prepare_results_parquet(export_pack: dict) -> bytes:
+def _prepare_results_parquet(export_pack: dict[str, pd.DataFrame]) -> bytes:
     buffer = BytesIO()
     for dataframe in export_pack.values():
         dataframe.to_parquet(buffer, index=False)

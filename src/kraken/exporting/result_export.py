@@ -212,7 +212,11 @@ def __run_argument_checks(
 
 # Set Export Filename for Single File Mode
 def __set_single_export_filename(
-    export_pack_list: dict, filename: str, prefix: str, suffix: str, extension: str
+    export_pack_list: dict[str, DataFrame],
+    filename: str,
+    prefix: str,
+    suffix: str,
+    extension: str,
 ) -> str:
     if filename:
         return f"{prefix}{filename}{suffix}.{extension}"
@@ -229,7 +233,9 @@ def __set_single_export_filename(
 
 
 # Check Single/Multi Mode
-def __is_single_file_mode(export_pack_list: dict, extension: str) -> bool:
+def __is_single_file_mode(
+    export_pack_list: dict[str, DataFrame], extension: str
+) -> bool:
     number_of_dataframes = len(export_pack_list)
     return number_of_dataframes == 1 or SUPPORTED_EXTENSIONS[extension][0] == "single"
 
@@ -241,7 +247,7 @@ def __fetch_extension_prep_function(extension: str) -> Callable[..., bytes]:
 
 # Write Files to ZIP
 def __write_files_to_zip(
-    files_to_write: dict,
+    files_to_write: dict[str, bytes],
     export_directory: Path,
     overwrite: bool,
     zip_filename: str,
@@ -259,7 +265,7 @@ def __write_files_to_zip(
 
 # Write Files Directly
 def __write_files_directly(
-    files_to_write: dict, export_directory: Path, overwrite: bool
+    files_to_write: dict[str, bytes], export_directory: Path, overwrite: bool
 ) -> None:
     readout.print("Writing files...")
     for export_filename, buffer in files_to_write.items():
@@ -274,8 +280,11 @@ def __write_files_directly(
 
 
 def __prepare_single_file_buffers(
-    export_pack_list: dict, export_filename: str, extension: str, **kwargs: Any
-) -> dict:
+    export_pack_list: dict[str, DataFrame],
+    export_filename: str,
+    extension: str,
+    **kwargs: Any,
+) -> dict[str, bytes]:
     files_to_write = {}
     readout.print(f"\nPreparing file '{export_filename}'... ", end="")
     _file_prep_func = __fetch_extension_prep_function(extension)
@@ -287,13 +296,13 @@ def __prepare_single_file_buffers(
 
 
 def __prepare_multi_file_buffers(
-    export_pack_list: dict,
+    export_pack_list: dict[str, DataFrame],
     extension: str,
     filename: str,
     prefix: str,
     suffix: str,
     **kwargs: Any,
-) -> dict:
+) -> dict[str, bytes]:
     files_to_write = {}
     number_of_dataframes = len(export_pack_list)
     readout.print(f"\nPreparing {number_of_dataframes} {extension} files... ")

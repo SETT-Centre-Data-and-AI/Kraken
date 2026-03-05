@@ -66,7 +66,7 @@ class Uploader:
         self.kwargs: dict = kwargs
         self.__enforce_upload_argument_types()
         self.df: DataFrame = self.__prepare_dataframe_for_upload(df)
-        self.dtype_remap: dict[str, FLOAT | VARCHAR] = self.__get_dtypes()
+        self.dtype_remap: dict[str, FLOAT[Any] | VARCHAR] = self.__get_dtypes()
         self.connection: SaConnection | None = None
         self.cursor = None
         self.connected: bool = False
@@ -145,7 +145,7 @@ class Uploader:
 
         return None
 
-    def __get_dtypes(self) -> dict[str, FLOAT | VARCHAR]:
+    def __get_dtypes(self) -> dict[str, FLOAT[Any] | VARCHAR]:
         if is_dict_like(kwargs_dtype := self.kwargs.get("dtype", {})):
             # using or operator to allow to_sql dtype param (refer to PEP 584 for syntax).
             # kwarg.dtype's data types are prioritised over _convert_dtypes's data types
@@ -265,11 +265,7 @@ class Uploader:
         )
 
         # Upload with append
-        self.__upload_dataframe(
-            df=df,
-            if_exists="append",
-            **self.kwargs,
-        )
+        self.__upload_dataframe(df=df, if_exists="append")
 
     def __upload_with_conflict(self, df: DataFrame) -> None:
         if self.if_table_exists == "append":

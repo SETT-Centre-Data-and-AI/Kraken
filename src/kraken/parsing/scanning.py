@@ -18,9 +18,9 @@ class Scanner:
     def __init__(
         self,
         sql: str,
-        comment_tokens: list[tuple],
-        wrapper_tokens: list[tuple],
-        split_tokens: list[tuple],
+        comment_tokens: list[tuple[str, ...]],
+        wrapper_tokens: list[tuple[str, ...]],
+        split_tokens: list[tuple[str, ...]],
         feedback: bool = False,
         comment_only_mode: bool = True,
     ):
@@ -32,10 +32,12 @@ class Scanner:
         self.__reset_scanner()
 
         # Tokens
-        self.comment_tokens: list[tuple] = comment_tokens
-        self.wrapper_tokens: list[tuple] = wrapper_tokens
-        self.all_zonal_tokens: list[tuple] = self.comment_tokens + self.wrapper_tokens
-        self.split_tokens: list[tuple] = split_tokens
+        self.comment_tokens: list[tuple[str, ...]] = comment_tokens
+        self.wrapper_tokens: list[tuple[str, ...]] = wrapper_tokens
+        self.all_zonal_tokens: list[tuple[str, ...]] = (
+            self.comment_tokens + self.wrapper_tokens
+        )
+        self.split_tokens: list[tuple[str, ...]] = split_tokens
 
         # Mapping
         self.events: list[Event] = []
@@ -265,9 +267,9 @@ class Scanner:
 
 def create_scanner(
     sql: str,
-    comment_tokens: list[tuple],
-    wrapper_tokens: list[tuple],
-    split_tokens: list[tuple],
+    comment_tokens: list[tuple[str, ...]],
+    wrapper_tokens: list[tuple[str, ...]],
+    split_tokens: list[tuple[str, ...]],
     feedback: bool = False,
     comment_only_mode: bool = False,
 ) -> Scanner:

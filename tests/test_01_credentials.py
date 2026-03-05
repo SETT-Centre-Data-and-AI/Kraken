@@ -105,15 +105,15 @@ def test_fetch_credentials() -> None:
         credentials = credential_manager.fetch_credentials(TEST_ALIAS, TEST_USERNAME)
 
         # Check credentials
-        assert isinstance(
-            credentials, Credentials
-        ), "returned credentials is not a Credentials object"
+        assert isinstance(credentials, Credentials), (
+            "returned credentials is not a Credentials object"
+        )
         assert credentials.alias == TEST_ALIAS, "Alias mismatch"
         assert credentials.username == TEST_USERNAME, "Username mismatch"
         assert credentials.platform == TEST_PLATFORM, "Platform mismatch"
-        assert (
-            credentials.connection_string == TEST_CONNECTION_STRING
-        ), "Connection string mismatch"
+        assert credentials.connection_string == TEST_CONNECTION_STRING, (
+            "Connection string mismatch"
+        )
         assert credentials.password == TEST_PASSWORD, "Password mismatch"
 
 
@@ -136,15 +136,15 @@ def test_fetch_credentials_when_default() -> None:
         credentials = credential_manager.fetch_credentials(TEST_ALIAS, username=None)
 
         # Check credentials
-        assert isinstance(
-            credentials, Credentials
-        ), "returned credentials is not a Credentials object"
+        assert isinstance(credentials, Credentials), (
+            "returned credentials is not a Credentials object"
+        )
         assert credentials.alias == TEST_ALIAS, "Alias mismatch"
         assert credentials.username == TEST_USERNAME, "Username mismatch"
         assert credentials.platform == TEST_PLATFORM, "Platform mismatch"
-        assert (
-            credentials.connection_string == TEST_CONNECTION_STRING
-        ), "Connection string mismatch"
+        assert credentials.connection_string == TEST_CONNECTION_STRING, (
+            "Connection string mismatch"
+        )
         assert credentials.password == TEST_PASSWORD, "Password mismatch"
 
 
