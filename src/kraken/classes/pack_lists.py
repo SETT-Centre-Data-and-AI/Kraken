@@ -5,6 +5,7 @@ from collections import UserList
 from typing import Iterable, Literal, Union, overload
 
 from pandas import DataFrame
+from pandasql import sqldf  # type: ignore[import-untyped]
 
 from kraken.classes.data_types import StatsPack
 from kraken.classes.packs import Query, Result
@@ -75,9 +76,9 @@ class ResultList(UserList[Result]):
             readout.print(f"Returned {len(found_results)} results for {search_value}")
             return found_results
 
-    def convert_to_dict(self) -> dict:
+    def convert_to_dict(self) -> dict[str, DataFrame]:
         original_names = [item_pack.df_name for item_pack in self]
-        item_dict = {}
+        item_dict: dict[str, DataFrame] = {}
 
         for item_pack in self:
             if item_pack.df_name not in item_dict:
@@ -104,11 +105,7 @@ class ResultList(UserList[Result]):
             DataFrame: Query results as DataFrame.
         """
         temp_dfs = self.convert_to_dict()
-
-        for temp_var_name, df in temp_dfs.items():
-            locals()[temp_var_name] = df
-
-        result: DataFrame = eval(f'sqldf("""{query}""")')
+        result: DataFrame = sqldf(query, env=temp_dfs)
         return result
 
     @overload
@@ -309,7 +306,7 @@ class QueryList(UserList[Query]):
         for result in self.data:
             field_value = getattr(result, field_name, None)
             if field_value == search_value:
-                if isinstance(found_results, Query):
+                if isinstance(found_results, QueryList):
                     found_results.append(result)
                 else:
                     return result

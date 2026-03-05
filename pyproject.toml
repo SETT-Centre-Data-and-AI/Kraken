@@ -1,6 +1,6 @@
 [project]
 name = "datakraken"
-version = "1.2.3"
+version = "1.5.0"
 description = "Kraken is a convenience package that orchestrates data extraction by integrating SQL with Python, while managing safe storage and recall of sensitive connection credentials."
 authors = [
   { name = "Cai Davis" },

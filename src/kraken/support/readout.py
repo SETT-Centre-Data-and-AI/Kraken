@@ -7,7 +7,6 @@ class Colour(Enum):
 
 
 class Readout:
-
     _instance = None  # Class variable to store the singleton instance
     ACTIVE = True
 

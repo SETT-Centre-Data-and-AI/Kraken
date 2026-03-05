@@ -1,3 +1,4 @@
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
@@ -99,7 +100,6 @@ def create_db_sql_mapping(
         str,
         str | None,
         str | None,
-        int | None,
     ],
     QueryList,
 ]:
@@ -109,22 +109,19 @@ def create_db_sql_mapping(
             str,
             str | None,
             str | None,
-            int | None,
         ],
         QueryList,
-    ] = {}
+    ] = defaultdict(QueryList)
 
     for query in query_list:
-        mapping.setdefault(
+        mapping[
             (
                 query.filepath,
                 query.filename,
                 query.db_alias,
                 query.isolation_level,
-                query.arraysize,
-            ),
-            [],  # type: ignore[arg-type]
-        ).append(query)
+            )
+        ].append(query)
 
     return mapping
 
@@ -211,7 +208,6 @@ def __execute_all_queries(
             str,
             str | None,
             str | None,
-            int | None,
         ],
         QueryList,
     ],
@@ -242,7 +238,6 @@ def __execute_all_queries(
             str,
             str | None,
             str | None,
-            int | None,
         ],
         query_list: QueryList,
         concurrent: bool = False,
@@ -268,7 +263,6 @@ def __execute_all_queries(
             alias=db_alias,
             username=username,
             isolation_level=isolation_level or file_isolation_level,  # type: ignore
-            arraysize=arraysize,
         )
         if not concurrent:
             readout.print(
@@ -276,6 +270,7 @@ def __execute_all_queries(
             )
 
         for query in query_list:
+            connector.kwargs["arraysize"] = query.arraysize
             df = connector.execute(
                 query=query.sql,
                 query_name=f"'{query.df_name}'".ljust(max_df_name_length),

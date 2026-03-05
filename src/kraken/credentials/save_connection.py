@@ -110,7 +110,6 @@ def save_connection(
 def __test_connection(
     credentials: Credentials,
 ) -> tuple[bool, None | DatabaseConnectionError]:
-
     connector = create_connector(
         alias=credentials.alias, custom_credentials=credentials
     )

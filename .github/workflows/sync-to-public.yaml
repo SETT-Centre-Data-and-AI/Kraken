@@ -85,7 +85,7 @@ jobs:
         existing_pr=$(gh pr list \
           --repo "$PUBLIC_REPO" \
           --head "${PUBLIC_REPO_INCOMING_BRANCH}" \
-          --base "${PRIVATE_REPO_RELEASE_BRANCH}" \
+          --base "${PUBLIC_REPO_RELEASE_BRANCH}" \
           --state open \
           --json number \
           --jq '.[0].number' || true)
@@ -102,7 +102,7 @@ jobs:
           git remote add public https://x-access-token:${REPO_SYNC_TOKEN}@github.com/${PUBLIC_REPO}.git
 
         echo "Pushing HEAD → public:${PUBLIC_REPO_INCOMING_BRANCH}"
-        git push public HEAD:refs/heads/${PUBLIC_REPO_INCOMING_BRANCH} --force
+        git push public HEAD:refs/heads/${PUBLIC_REPO_INCOMING_BRANCH} --force-with-lease
 
     - name: Create PR for Release
       env:
@@ -119,6 +119,6 @@ jobs:
         gh pr create \
           --repo "$PUBLIC_REPO" \
           --head "${PUBLIC_REPO_INCOMING_BRANCH}" \
-          --base "${PRIVATE_REPO_RELEASE_BRANCH}" \
+          --base "${PUBLIC_REPO_RELEASE_BRANCH}" \
           --title "Sync from private ${PRIVATE_REPO_RELEASE_BRANCH}" \
           --body "Automated sync from private release branch."

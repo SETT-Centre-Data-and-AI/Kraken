@@ -1,8 +1,14 @@
 import difflib
 import re
 
-from kraken.parsing.scanning import SPLIT, ZONE, Region, Scanner, create_scanner
-from kraken.parsing.support_classes import Replacement, ScannedQuery
+from kraken.parsing.scanning import Scanner, create_scanner
+from kraken.parsing.support_classes import (
+    SPLIT,
+    ZONE,
+    Region,
+    Replacement,
+    ScannedQuery,
+)
 from kraken.platforms.config import PlatformConfig, get_platform_config
 
 
@@ -26,7 +32,7 @@ class Parser:
         self.all_queries: list[ScannedQuery] = []
         self.empty_queries: list[ScannedQuery] = []
         self.start_variables: dict = {}
-        self.user_variables: dict = {}
+        self.user_variables: dict[str, str] = {}
         self.final_variables: dict = {}
         self.scanner: Scanner | None = None
         self.feedback: bool = feedback
@@ -87,7 +93,9 @@ class Parser:
             return True
         return False
 
-    def __set_user_variables(self, user_variables: dict | None = None) -> None:
+    def __set_user_variables(
+        self, user_variables: dict[str, str] | None = None
+    ) -> None:
         self.user_variables = user_variables or {}
 
     def __strip_one_quote(self, value: str) -> str:
@@ -136,7 +144,7 @@ class Parser:
                 return True
         return False
 
-    def __replace_declaration(self, match: re.Match) -> None:
+    def __replace_declaration(self, match: re.Match[str]) -> None:
         var_name, original_value = match.groups()
         if self.config.remove_declaration:
             self.replacements.append(Replacement(match.start(), match.end(), ""))
@@ -162,7 +170,7 @@ class Parser:
 
         self.replacements.append(Replacement(match.start(), match.end(), replacement))
 
-    def __replace_declaration_usage(self, match: re.Match) -> None:
+    def __replace_declaration_usage(self, match: re.Match[str]) -> None:
         var_name = match.group(1)
         if var_name in self.final_variables and not self.__is_in_comment(match.start()):
             value: str = self.final_variables[var_name]
@@ -405,9 +413,11 @@ Differences
     def parse_sql(
         self,
         input_sql: str,
-        user_variables: dict | None = None,
+        user_variables: dict[str, str] | None = None,
         split_queries: bool = True,
     ) -> None:
+        self.reset()
+
         # Prepare
         self.__load_sql(input_sql=input_sql)
         self.__set_user_variables(user_variables)
@@ -433,4 +443,6 @@ Differences
         self.get_summary_report(return_report=False)
 
     def reset(self) -> None:
-        type(self)(platform=self.config.platform, feedback=self.feedback)
+        refreshed = type(self)(platform=self.config.platform, feedback=self.feedback)
+        self.__dict__.clear()
+        self.__dict__.update(refreshed.__dict__)

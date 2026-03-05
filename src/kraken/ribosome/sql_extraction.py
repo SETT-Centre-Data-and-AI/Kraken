@@ -23,7 +23,7 @@ from kraken.support.support import (
 ### Extract SQL from files ###
 def extract_sql(
     filepaths: str | Path | list[str] | list[Path] = "",
-    variables: dict = {},
+    variables: dict[str, str] = {},
     username: str | None = None,
     parsing_feedback: bool = False,
     encoding: str = "utf-8",
@@ -51,6 +51,7 @@ def extract_sql(
     # Assertions
     _check_filepaths_type(filepaths=filepaths)
     _check_variables_type(variables)
+    variables = variables or {}
 
     # Load SQL Files
     readout.print("Extracting SQL Files...")
@@ -128,7 +129,8 @@ def _create_sql_file_list(
 
             credential_manager = CredentialManager()
             credentials = credential_manager.fetch_credentials(
-                alias=db_alias, username=username  # type: ignore
+                alias=db_alias,  # type: ignore
+                username=username,
             )
 
             sql_file = SQLFile(
@@ -158,7 +160,8 @@ def _create_sql_file_list(
 
 
 ### Helper: Create Query from SQLFile ###
-def _create_queries(sql_file: SQLFile, variables: dict = {}) -> list[Query]:
+def _create_queries(sql_file: SQLFile, variables: dict[str, str] = {}) -> list[Query]:
+    variables = variables or {}
     query_list = []
     split_queries = []
 

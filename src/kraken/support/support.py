@@ -129,7 +129,7 @@ def print_runtime(
 
 
 ### Check Path Filetype ###
-def _check_filetype(filepath: str | Path, extension: str | list) -> bool:
+def _check_filetype(filepath: str | Path, extension: str | list[str]) -> bool:
     extensions = [extension] if isinstance(extension, str) else extension
     extensions = [f".{ext}" if ext[0] != "." else ext for ext in extensions]
     filepath = Path(filepath)
@@ -278,13 +278,18 @@ def _check_credentials(
     return (database_alias, username, connection_json)
 
 
-### Notebook Mode Check ###
 def is_notebook() -> bool:
+    """https://stackoverflow.com/a/39662359"""
     try:
-        shell = get_ipython().__class__.__name__
-        return shell == "ZMQInteractiveShell"  # type: ignore[no-any-return]
+        shell: str = get_ipython().__class__.__name__
+        if shell == "ZMQInteractiveShell":
+            return True  # Jupyter notebook or qtconsole
+        elif shell == "TerminalInteractiveShell":
+            return False  # Terminal running IPython
+        else:
+            return False  # Other type (?)
     except NameError:
-        return False  # Probably standard Python interpreter
+        return False
 
 
 ### Set Engine Path Convenience ###

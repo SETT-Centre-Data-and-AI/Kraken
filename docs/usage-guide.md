@@ -139,7 +139,8 @@ For example, using MSSQL declarations requires an entire script to be executed w
 
 Note two important points:
  - this behaviour will only work if the database platform itself supports it (e.g. this will not not work with Oracle databases).
- - because Kraken is not splitting queries, assigning names, and then executing them one by one - only a single `--$Dataframe` flag can be assigned (with any returned DataFrames beyond the first being assigned numbering accordingly). If multiple such flags are detected when not splitting queries, Kraken will use the first and continue, but warn the user.
+ - because Kraken is not splitting queries, assigning names, and then executing them one by one - only a single `--$Dataframe` flag can be assigned (with any returned DataFrames being assigned numbering accordingly). If multiple such flags are detected when not splitting queries, Kraken will use the last and continue, but warn the user.
+ - the last `--$Dataframe` flag will be used for naming.
 
 ## Setting Isolation Level <a id="setting_isolation_level"></a>
 By default, all connections will set an isolation level according to database/driver defaults. If the isolation level needs to be controlled, the `--$Isolation_level` flag can be used in a SQL file (underscore is optional). Alternatively, the `isolation_level` argument can be passed to:

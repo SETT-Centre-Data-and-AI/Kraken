@@ -50,7 +50,7 @@ def graph(
     where_clause: str | None = None,
     convert_dates: bool = True,
     discard_null_aggs: bool = True,
-    figsize: tuple = (22, 7),
+    figsize: tuple[int, int] = (22, 7),
     bw_adjust: float = 0.5,
     alpha: float | None = None,
     convert_categories_to_str: bool = False,
@@ -188,7 +188,7 @@ def graph(
         y_agg = None
 
     # Check aggregations supported
-    if type(x_agg) in (int, float):
+    if isinstance(x_agg, (int, float)):
         if df[x].dtype == "datetime64[ns]":
             raise ValueError(
                 f"Numeric x_agg value ({x_agg}) used for '{df[x].dtype}' column '{x}'. Please aggregate by time period: {[t for t in x_aggs_supported_date]}"
@@ -280,8 +280,11 @@ def graph(
                         .dt.to_timestamp("s")
                     )
 
-            elif type(x_agg) in (int, float) and column_is_numeric_dict.get(x) is True:
-                df[x] = pd.cut(  # type: ignore[call-overload]
+            elif (
+                isinstance(x_agg, (int, float))
+                and column_is_numeric_dict.get(x) is True
+            ):
+                df[x] = pd.cut(
                     df[x],
                     bins=np.arange(0, df[x].max() + x_agg + 1, x_agg),
                     right=False,
@@ -291,7 +294,7 @@ def graph(
         elif x_agg is None:
             df = (
                 df.groupby(all_group_columns)
-                .agg({y: lambda values: aggregate_y(y_agg, values)})  # type: ignore[arg-type]
+                .agg({y: lambda values: aggregate_y(y_agg, values)})  # type: ignore
                 .reset_index()
             )
 
@@ -306,16 +309,16 @@ def graph(
                     ]
                     + group_columns
                 )
-                .agg({y: lambda values: aggregate_y(y_agg, values)})  # type: ignore[arg-type]
+                .agg({y: lambda values: aggregate_y(y_agg, values)})  # type: ignore
                 .reset_index()
             )
 
         # Aggregate numerics
-        elif type(x_agg) in (int, float) and column_is_numeric_dict.get(x) is True:
+        elif isinstance(x_agg, (int, float)) and column_is_numeric_dict.get(x) is True:
             df = (
                 df.groupby(
                     [
-                        pd.cut(  # type: ignore[call-overload]
+                        pd.cut(
                             df[x],
                             bins=np.arange(0, df[x].max() + x_agg + 1, x_agg),
                             right=False,
@@ -324,7 +327,7 @@ def graph(
                     + group_columns,
                     observed=False,
                 )
-                .agg({y: lambda values: aggregate_y(y_agg, values)})  # type: ignore[arg-type]
+                .agg({y: lambda values: aggregate_y(y_agg, values)})
                 .reset_index()
             )
 

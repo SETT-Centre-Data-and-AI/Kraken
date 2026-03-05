@@ -12,6 +12,8 @@ from kraken.analysis.data_manipulation import check_df_integers as clean_datafra
 from kraken.connection.support import (
     _compile_pyodbc_connection_string,
     _split_pyodbc_connection_string,
+    _check_execution_error,
+    DEFAULT_ARRAYSIZE,
 )
 from kraken.credentials.credentials import Credentials
 from kraken.credentials.helpers import fetch_credentials
@@ -64,7 +66,7 @@ class ConnectionLike(Protocol, Generic[TCursor]):
     def cursor(self, *args: Any, **kwargs: Any) -> TCursor: ...
 
 
-TConn = TypeVar("TConn", bound=ConnectionLike)
+TConn = TypeVar("TConn", bound=ConnectionLike[CursorLike])
 
 
 class Connector(ABC, Generic[TConn, TCursor]):
@@ -305,7 +307,9 @@ class Connector(ABC, Generic[TConn, TCursor]):
 
             except Exception as e:
                 self._close_connection_in_error()
-                raise QueryExecutionError(str(e)) from e
+                raise QueryExecutionError(
+                    _check_execution_error(e, self.platform)
+                ) from e
 
             dataframes = self._fetch_data(
                 query_name=query_name,
@@ -424,7 +428,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
 
     def _process_dataframe(
         self, df: DataFrame, clean_df: bool, check_column_duplicates: bool
-    ) -> DataFrame:
+    ) -> DataFrame | None:
         if df is None:
             return
 
@@ -657,18 +661,24 @@ class SaConnector(
             progress_ctx.start_auto_update()
 
             try:
-                if self.kwargs.get("arraysize"):
-                    connection = self.engine.connect()
-                    result = connection.exec_driver_sql(query)
-                    self.cursor = result.cursor
-                else:
-                    if not self.cursor:
-                        self.cursor = self.connection.cursor()
-                    self.cursor.execute(query)
+                if not self.cursor:
+                    self.cursor = self.connection.cursor()
+
+                if hasattr(self.cursor, "arraysize") and self.config.arraysize_support:
+                    arraysize = self.kwargs.get("arraysize") or DEFAULT_ARRAYSIZE
+                    try:
+                        self.cursor.arraysize = int(arraysize)
+                    except Exception:
+                        readout.warn(
+                            f"WARNING: Failed to set cursor.arraysize to {arraysize}"
+                        )
+                self.cursor.execute(query)
 
             except Exception as e:
                 self._close_connection_in_error()
-                raise QueryExecutionError(str(e)) from e
+                raise QueryExecutionError(
+                    _check_execution_error(e, self.platform)
+                ) from e
 
             dataframes = self._fetch_data(
                 query_name=query_name,
@@ -765,7 +775,7 @@ def create_connector(
         | None
     ) = None,
     **kwargs: Any,
-) -> Connector:
+) -> SaConnector | PyoConnector:
     """Creates Kraken Connector.
 
     Args:
