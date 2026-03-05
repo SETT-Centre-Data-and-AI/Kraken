@@ -119,6 +119,6 @@ jobs:
         gh pr create \
           --repo "$PUBLIC_REPO" \
           --head "${PUBLIC_REPO_INCOMING_BRANCH}" \
-          --base "${PRIVATE_REPO_RELEASE_BRANCH}" \
+          --base "${PUBLIC_REPO_RELEASE_BRANCH}" \
           --title "Sync from private ${PRIVATE_REPO_RELEASE_BRANCH}" \
           --body "Automated sync from private release branch."
