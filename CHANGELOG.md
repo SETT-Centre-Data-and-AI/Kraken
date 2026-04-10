@@ -1,3 +1,13 @@
+## v1.6.1 (2026-04-10)
+
+### Feat
+
+- **resync**: resync private and public repos
+
+### Fix
+
+- **sync-from-public.yaml**: fixed to use new centralised orchestrator
+
 ## v1.6.0 (2026-03-24)
 
 ### Feat
