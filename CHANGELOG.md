@@ -1,3 +1,35 @@
+## v1.6.1 (2026-04-10)
+
+### Feat
+
+- **resync**: resync private and public repos
+
+### Fix
+
+- **sync-from-public.yaml**: fixed to use new centralised orchestrator
+
+## v1.6.0 (2026-03-24)
+
+### Feat
+
+- **workflows**: updated to use centralised CI/CD - fixes to pre-install to follow
+
+### Fix
+
+- **pre-install.sh**: attempt to add additional kraken preinstallation
+- **CICD**: fixed sync-to-public (#31)
+
+## v1.5.1 (2026-03-24)
+
+### Feat
+
+- **workflows**: updated to use centralised CI/CD - fixes to pre-install to follow
+
+### Fix
+
+- **pre-install.sh**: attempt to add additional kraken preinstallation
+- **CICD**: fixed sync-to-public (#31)
+
 ## v1.5.0 (2026-03-05)
 
 ### Fix
