@@ -22,7 +22,7 @@ def check_df_integers(df: DataFrame) -> DataFrame:
     """
     df_original_columns = df.columns
     if df.columns.has_duplicates:
-        df.columns = pd.io.common.dedup_names(df.columns, is_potential_multiindex=False)  # type: ignore[attr-defined]
+        df.columns = pd.io.common.dedup_names(df.columns, is_potential_multiindex=False)
     for column in df.columns:
         if df[column].isna().all():
             continue
