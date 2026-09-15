@@ -3,6 +3,7 @@ from importlib.metadata import version
 
 __version__ = version("datakraken")
 
+from kraken import demo
 from kraken.analysis.data_manipulation import check_duplicates, examine
 from kraken.classes.pack_lists import (
     QueryList,
@@ -30,6 +31,7 @@ from kraken.credentials.save_convenience import (
 )
 from kraken.exporting.result_export import export_results
 from kraken.graphing.graphing import graph
+from kraken.graphing.models import GraphResult
 from kraken.importing.data_import import extract_spreadsheets
 from kraken.parsing.parsing import Parser
 from kraken.ribosome.ribosome import run
@@ -54,6 +56,7 @@ __all__ = [
     "check_duplicates",
     "create_connector",
     "delete_credentials",
+    "demo",
     "examine",
     "execute",
     "execute_sql",
@@ -61,6 +64,7 @@ __all__ = [
     "extract_sql",
     "fetch_credentials",
     "graph",
+    "GraphResult",
     "readout",
     "run",
     "save_connection_Cache",

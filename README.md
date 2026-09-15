@@ -7,7 +7,7 @@ Kraken is a convenience package that orchestrates data extraction by integrating
 
 Developed in the NHS at University Hospital Southampton to facilitate clinical research in a complex multi-database environment, Kraken provides streamlined management of Reproducible Analytical Pipelines (RAPs) from multiple data sources by automating extraction, parsing, connection and execution of SQL files. Offering multiple levels of control, Kraken can run an entire SQL data pipeline from extraction to export with as little as one line of Python code, or provide more fine-tuned management of entire ETL flows through use of underlying connector objects. Kraken also provides standardised statistical summaries and graphing for speedy interrogation of results.
 
-Wrapping around packages like `keyring`, `sqlalchemy`, `pyodbc`, `pandas`, `matplotlib` and `seaborn`, Kraken:
+Wrapping around packages like `keyring`, `sqlalchemy`, `pyodbc`, `pandas`, `Plotly`, and `SciPy`, Kraken:
 * Safely stores sensitive database connection credentials under an 'alias' in your operating system's credential store, and recalls them on demand and as dictated by SQL files;
 * Extracts all SQL from a targeted file or folder of files (sequentially or simultaneously) - parsing and splitting them into queries before executing them in order;
 * Returns DataFrame results that include provenance metadata for auditable tracking;
@@ -18,6 +18,22 @@ Wrapping around packages like `keyring`, `sqlalchemy`, `pyodbc`, `pandas`, `matp
 # Guides
 * [Installation and Setup Guide](./docs/installation-and-setup-guide.md)
 * [Usage Guide](./docs/usage-guide.md)
+
+# Migrating to v1.7 graphing
+
+`graph()` now returns a `GraphResult` for every call. Code that previously requested an aggregation table with `return_results=True` should read the returned `data` field instead. Interactive Plotly figures are available through `figure`:
+
+```python
+# Before Kraken v1.7
+data = kraken.graph(df, x="category", graph="bar", return_results=True)
+
+# Kraken v1.7
+result = kraken.graph(df, x="category", graph="bar")
+data = result.data
+figure = result.figure
+```
+
+The `return_results` argument is retained temporarily as a deprecated no-op. Newly added interactive options, including `show`, `width`, `height`, facets, hover columns, and confidence intervals, are keyword-only.
 
 # Quickstart Example
 ```
@@ -63,7 +79,8 @@ for result in results:
 
 #### Analysis
 - `examine()` - analyse DataFrame & provide high-level statistical summary
-- `graph()` - graph DataFrame quickly with support for multiple graph types
+- `graph()` - prepare data and create responsive interactive Plotly graphs with aggregation. Renderer-specific support includes histograms, timelines, facets, marginal plots, custom hover columns, regression lines, and mean confidence intervals; see the [graph capability matrix](./docs/usage-guide.md#stats_and_graphing) for exact combinations. The returned `GraphResult` provides prepared data, an editable figure, and HTML and static-image export helpers. Static image export uses the core Kaleido dependency and requires Chrome or Chromium.
+- `demo.generate_demo_data()` - create a deterministic `ResultList` of synthetic patient, inpatient-spell, and laboratory data for examples and experimentation.
 
 #### Helpers
 - `generate_where_clause()` - loop over a DataFrame to convert rows or columns into batches of WHERE clauses

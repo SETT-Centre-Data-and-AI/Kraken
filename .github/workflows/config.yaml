@@ -64,7 +64,7 @@ jobs:
       PUBLISH_PYTHON_VERSION: '3.13'
       PUBLISH_ON_RELEASE: 'true'                                # set 'true' to auto-publish on public release merges
       SYNC_TO_PUBLIC: 'true'                                    # set 'true' to auto-sync private release to public
-      TEST_MATRIX_JSON: '{"include":[{"os":"ubuntu-latest","python-version":"3.10"},{"os":"ubuntu-latest","python-version":"3.11"},{"os":"ubuntu-latest","python-version":"3.12"},{"os":"ubuntu-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.13"}]}'
+      TEST_MATRIX_JSON: '{"include":[{"os":"ubuntu-latest","python-version":"3.10"},{"os":"ubuntu-latest","python-version":"3.11"},{"os":"ubuntu-latest","python-version":"3.12"},{"os":"ubuntu-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.14"}]}'
 
     # ================================================ #
     # ------------------- End Edit ------------------- #

@@ -9,7 +9,9 @@ from pandasql import sqldf  # type: ignore[import-untyped]
 
 from kraken.classes.data_types import StatsPack
 from kraken.classes.packs import Query, Result
+from kraken.exceptions import GraphColumnError
 from kraken.graphing.graphing import graph as graph_main
+from kraken.graphing.models import GraphResult, GraphType
 from kraken.support.readout import readout
 
 
@@ -108,41 +110,23 @@ class ResultList(UserList[Result]):
         result: DataFrame = sqldf(query, env=temp_dfs)
         return result
 
-    @overload
-    def examine(
-        self,
-        df_name: str,
-        unique_ceiling: int = ...,
-        show_results: bool = ...,
-        return_results: Literal[False] = False,
-    ) -> None: ...
-
-    @overload
-    def examine(
-        self,
-        df_name: str,
-        unique_ceiling: int = ...,
-        show_results: bool = ...,
-        return_results: Literal[True] = True,
-    ) -> StatsPack: ...
-
     def examine(
         self,
         df_name: str,
         unique_ceiling: int = 10,
         show_results: bool = True,
         return_results: bool = False,
-    ) -> StatsPack | None:
+    ) -> StatsPack:
         """Performs high-level analysis of data in a Result's dataframe and outputs results.
 
         Args:
             df_name (str, optional): Select a Result to examine by df_name.
             unique_ceiling (int, optional): Ceiling below which a distinct number of values in a column will be included in 'category calculations'. Defaults to 10.
             show_results (bool, optional): Display results in python/notebook readouts. Defaults to True.
-            return_results (bool, optional): Returns results as StatsPack. Defaults to False.
+            return_results (bool, optional): Deprecated compatibility argument. A StatsPack is always returned.
 
         Returns:
-            StatsPack: Tuple including df_name, stats dataframe, and category coverage dataframe.
+            StatsPack: Result containing the dataframe name, column statistics, and category coverage dataframes.
         """
         if df_name is None:
             raise ValueError(
@@ -162,66 +146,85 @@ class ResultList(UserList[Result]):
         df_name: str,
         x: str,
         y: str | None = None,
-        graph: (
-            Literal[
-                "aggregation",
-                "density",
-                "bar",
-                "box",
-                "violin",
-                "scatter",
-                "stacked",
-            ]
-            | None
-        ) = None,
-        x_agg: str | None = None,
+        graph: GraphType | str | None = None,
+        x_agg: str | int | float | None = None,
         y_agg: str | None = None,
         group_colour: str | None = None,
         where_clause: str | None = None,
         convert_dates: bool = True,
         discard_null_aggs: bool = True,
-        figsize: tuple[int, int] = (22, 7),
+        figsize: tuple[int, int] | None = None,
         bw_adjust: float = 0.5,
-        alpha: bool | None = None,
+        alpha: float | None = None,
         convert_categories_to_str: bool = False,
-        linear_regression: bool = True,
+        linear_regression: bool = False,
         showfliers: bool = True,
         title: str | None = None,
         x_label: str | None = None,
         y_label: str | None = None,
         return_results: bool = False,
-    ) -> DataFrame | None:
+        *,
+        width: int | None = None,
+        height: int | None = None,
+        scroll: bool = False,
+        show: bool = True,
+        x_end: str | None = None,
+        facet_row: str | None = None,
+        facet_col: str | None = None,
+        marginal_x: str | None = None,
+        marginal_y: str | None = None,
+        hover_columns: list[str] | None = None,
+        error: str | None = None,
+        confidence_level: float = 0.95,
+    ) -> GraphResult:
         """Graphing function for Result DataFrames in a ResultList, allowing selection of multiple graphs with different x, y, and aggregation arguments.
 
         Args:
             df_name (str): Result df_name for graphing.
             x (str): x-axis column.
-            y (str, optional): y-axis column. If left empty, graphs requiring a y-axis value will plot an aggregation of the x-value here. Defaults to None.
+            y (str, optional): y-axis column. Box, violin, density, and scatter require real numeric or timedelta values. Aggregate graphs apply ``y_agg`` to x when omitted.
             graph (str, optional): Selected graph. Processing (and acceptance) of input arguments varies by graph. Defaults to None.
-            x_agg (int | str optional): Aggregation of the x-values into bins. Accepts 'year', 'month', etc for date columns, or integers for numeric columns. Defaults to None.
-            y_agg (str, optional): Aggregation calculation to apply to y-values, for example 'sum', 'count', or 'mean'. Defaults to None.
+            x_agg (int | float | str, optional): Date period or finite positive numeric bin width. Numeric widths cannot bin timedeltas. Defaults to None.
+            y_agg (str, optional): ``count``, ``countd``, ``sum``, ``mean``, ``mode``, or ``median``. Sum, mean, and median require quantitative values. Defaults to None.
             group_colour (str, optional): Column to group by, or apply, colouring. Defaults to None.
             where_clause (str, optional): SQL-style where clause to quickly filter DataFrame. Note that filters directly applied in the 'df=' are faster. Defaults to None.
-            convert_dates (str, optional): Convert 'object' columns recognisable as dates. Defaults to True.
-            discard_null_aggs (str, optional): Discard rows (and plots) with null y-values or aggregations. Defaults to True.
-            figsize (tuple, optional): Graph size. Defaults to (22, 7).
+            convert_dates (bool, optional): Convert recognised date axes. Required numeric axes and measures are converted automatically with a warning. Defaults to True.
+            discard_null_aggs (bool, optional): Discard null aggregate rows and incomplete timeline ranges; otherwise incomplete timelines raise an error. Defaults to True.
+            figsize (tuple, optional): Legacy fixed size in inches. Responsive by default.
             bw_adjust (float, optional): Granularity of density graphs. Lower values increase granularity. Defaults to 0.5.
             alpha (bool, optional): Transparency of fill. Defaults to None.
             convert_categories_to_str (bool, optional): If numeric categories (for example, year of birth) display
                 with the x-axis forced to zero, set to True to convert numbers to categories. Note that this may change the ordering. Defaults to False.
-            linear_regression (bool, optional): If plotting a scatter-graph, setting to False will hide the linear regression line. Defaults to True.
+            linear_regression (bool, optional): Add scatter regression lines. Defaults to False.
             showfliers (bool, optional): If plotting a boxplot, show outliers. Defaults to True.
             title (str, optional): Graph title. If None, generated from input data.
             x_label (str, optional): X-axis label. If None, generated from input data.
             y_label (str, optional): Y-axis label. If None, generated from input data.
-            return_results (bool, optional): Returns resultant aggregation table created to plot graph as a DataFrame. Defaults to False.
+            return_results (bool, optional): Deprecated compatibility argument. Prepared data is always returned. Defaults to False.
+            width (int, optional): Explicit Plotly width in pixels, with a minimum of 10. Responsive by default.
+            height (int, optional): Explicit Plotly height in pixels, with a minimum of 10.
+            scroll (bool, optional): Use a wide canvas for horizontal scrolling.
+            show (bool, optional): Display the interactive figure immediately. Defaults to True.
+            x_end (str, optional): End-date column required for timeline graphs.
+            facet_row (str, optional): Column used to create facet rows where supported.
+            facet_col (str, optional): Column used to create facet columns where supported.
+            marginal_x (str, optional): Scatter marginal renderer for x.
+            marginal_y (str, optional): Scatter marginal renderer for y.
+            hover_columns (list[str], optional): Additional hover columns where supported.
+            error (str, optional): ``confidence_interval`` for supported mean aggregations.
+            confidence_level (float, optional): Confidence level strictly between zero and one.
 
         Returns:
-            DataFrame: DataFrame of resultant aggregation table (if `return_results = True`).
+            GraphResult: Interactive figure and prepared graph data.
+
+        Raises:
+            GraphingError: If graph capabilities, columns, dtypes, conversion,
+                aggregation, input data, or rendering are invalid.
         """
         if df_name is None:
-            raise ValueError(
-                "When using .examine() on a ResultList, you must choose a Result by passing df_name=''"
+            raise GraphColumnError(
+                "ResultList graph received df_name=None. Select a Result by passing "
+                "the df_name of an existing Result."
             )
 
         result = self.get(df_name)
@@ -229,7 +232,15 @@ class ResultList(UserList[Result]):
         return graph_main(
             result.df,
             x=x,
+            x_end=x_end,
             y=y,
+            facet_row=facet_row,
+            facet_col=facet_col,
+            marginal_x=marginal_x,
+            marginal_y=marginal_y,
+            hover_columns=hover_columns,
+            error=error,
+            confidence_level=confidence_level,
             graph=graph,
             x_agg=x_agg,
             y_agg=y_agg,
@@ -238,6 +249,9 @@ class ResultList(UserList[Result]):
             convert_dates=convert_dates,
             discard_null_aggs=discard_null_aggs,
             figsize=figsize,
+            width=width,
+            height=height,
+            scroll=scroll,
             bw_adjust=bw_adjust,
             alpha=alpha,
             convert_categories_to_str=convert_categories_to_str,
@@ -247,6 +261,7 @@ class ResultList(UserList[Result]):
             x_label=x_label,
             y_label=y_label,
             return_results=return_results,
+            show=show,
         )
 
     def check_duplicates(

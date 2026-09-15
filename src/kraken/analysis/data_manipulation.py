@@ -1,5 +1,6 @@
-from typing import Literal, overload
+import warnings
 
+import numpy as np
 import pandas as pd
 from IPython.display import display
 from pandas import DataFrame
@@ -38,33 +39,13 @@ def check_df_integers(df: DataFrame) -> DataFrame:
     return df
 
 
-@overload
-def examine(
-    df: DataFrame,
-    df_name: str = ...,
-    unique_ceiling: int = ...,
-    show_results: bool = ...,
-    return_results: Literal[False] = False,
-) -> None: ...
-
-
-@overload
-def examine(
-    df: DataFrame,
-    df_name: str = ...,
-    unique_ceiling: int = ...,
-    show_results: bool = ...,
-    return_results: bool = ...,
-) -> StatsPack | None: ...
-
-
 def examine(
     df: DataFrame,
     df_name: str = "df",
     unique_ceiling: int = 10,
     show_results: bool = True,
     return_results: bool = False,
-) -> StatsPack | None:
+) -> StatsPack:
     """Performs high-level analysis of data in a dataframe and outputs results.
 
     Args:
@@ -72,11 +53,21 @@ def examine(
         df_name (str, optional): Name of the originating dataframe. Defaults to "df".
         unique_ceiling (int, optional): Ceiling below which a distinct number of values in a column will be included in 'category calculations'. Defaults to 10.
         show_results (bool, optional): Display results in python/notebook readouts. Defaults to True.
-        return_results (bool, optional): Returns results as StatsPack. Defaults to False, returning None.
+        return_results (bool, optional): Deprecated compatibility argument. It has
+            no effect; a StatsPack is always returned.
 
     Returns:
-        StatsPack: Tuple including df name, stats dataframe, and category coverage dataframe.
+        StatsPack: Result containing the dataframe name, column statistics, and
+            category coverage dataframes.
     """
+
+    if return_results:
+        warnings.warn(
+            "return_results is deprecated and has no effect; examine() always "
+            "returns StatsPack.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     rows = df.shape[0]
     columns = df.shape[1]
@@ -208,9 +199,7 @@ def examine(
         print(f"\nCategories (<={unique_ceiling} unique values)")
         display(categories_df)
 
-    if return_results:
-        return stats_pack
-    return None
+    return stats_pack
 
 
 def date_converter_df(
@@ -234,6 +223,7 @@ def date_converter_df(
         "%d/%m/%Y",
         "%d/%b/%Y",
         "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S.%f",
         "%Y/%m/%d %H:%M:%S",
     ]
 
@@ -246,15 +236,18 @@ def date_converter_df(
         if col is None or isinstance(df[col], DataFrame) or df[col].dtype != "object":
             pass
         else:
+            values = df[col].map(
+                lambda value: value.item() if isinstance(value, np.generic) else value
+            )
             for format in date_formats:
                 try:
-                    df[col] = pd.to_datetime(df[col], format=format)
+                    df[col] = pd.to_datetime(values, format=format)
                     if readouts:
                         readout.warn(
                             f"Note: column '{col}' converted to datetime64[ns]"
                         )
                     break
-                except ValueError:
+                except (TypeError, ValueError):
                     pass
     return df
 
