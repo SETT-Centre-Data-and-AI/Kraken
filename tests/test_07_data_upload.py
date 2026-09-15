@@ -177,6 +177,32 @@ def test_force_dtypes_string_mixed_nulls(mixed_type_dataframe: pd.DataFrame) -> 
     assert _force_dtypes_string(mixed_type_dataframe)["str_column"].iloc[2] is np.nan
 
 
+### Test that _force_dtypes_string handles nested object values correctly
+def test_force_dtypes_string_nested_object_values() -> None:
+    imaging = [{"procedureDate": "2025-12-11", "imagingOutcome": "01"}]
+    nested_df = pd.DataFrame(
+        {
+            "imaging": [
+                imaging,
+                [],
+                {"procedureDate": "2025-12-12", "imagingOutcome": "02"},
+                None,
+                np.nan,
+            ]
+        }
+    )
+
+    converted_df = _force_dtypes_string(nested_df)
+
+    assert converted_df["imaging"].iloc[0] == str(imaging)
+    assert converted_df["imaging"].iloc[1] == str([])
+    assert converted_df["imaging"].iloc[2] == str(
+        {"procedureDate": "2025-12-12", "imagingOutcome": "02"}
+    )
+    assert pd.isna(converted_df["imaging"].iloc[3])
+    assert pd.isna(converted_df["imaging"].iloc[4])
+
+
 ### Test that _force_dtypes_string does not fail with an empty DataFrame
 def test_force_dtypes_string_empty_dataframe() -> None:
     empty_df = pd.DataFrame()

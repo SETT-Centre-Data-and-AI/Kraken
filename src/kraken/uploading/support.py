@@ -38,10 +38,18 @@ def _force_dtypes_string(df: DataFrame) -> DataFrame:
         DataFrame: DataFrame with all values in 'object' dtype columns converted to strings
     """
 
+    def is_non_null_value(value: Any) -> bool:
+        result = notnull(value)
+        if isinstance(result, (bool, np.bool_)):
+            return bool(result)
+        return True
+
     for column in df:
         if is_object_dtype(df[column]) or is_string_dtype(df[column]):
             df[column] = df[column].apply(lambda x: np.nan if x is None else x)
-            df[column] = df[column].apply(lambda x: str(x) if notnull(x) else x)
+            df[column] = df[column].apply(
+                lambda x: str(x) if is_non_null_value(x) else x
+            )
     return df
 
 

@@ -33,6 +33,7 @@ MANIFEST
 poetry.lock
 uv.lock
 .coverage
+.ai
 
 # mypy
 .mypy_cache/
@@ -68,6 +69,8 @@ venv.bak/
 # Project Specific
 notebooks/
 Save Credentials*
+*.png
+*.html
 
 # Databases
 *.duckdb
@@ -82,3 +85,5 @@ Save Credentials*
 
 # Project Keep
 !*/config_template/*
+!kraken.png
+!SETT Header.png

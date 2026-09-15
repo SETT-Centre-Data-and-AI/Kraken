@@ -2,16 +2,22 @@
 The following examples will use a Jupyter Notebook, imaginary SQL, and a MSSQL database saved by using `alias="RESEARCH"` with `kraken.save_connection_MSSQL()`. Please adapt your own code accordingly.
 
 ## Contents
- - [Executing SQL Directly](#executing_sql_directly)
- - [Executing SQL Files & Exporting Results](#executing_sql_files)
- - [Executing SQL Files Without Splitting Queries](#executing_without_splitting)
- - [Setting Isolation Level](#setting_isolation_level)
- - [Inspecting DataFrames](#inspecting_dataframes)
- - [Running the Ribosome](#running_ribosome)
- - [Extracting Spreadsheets](#extracting_spreadsheets)
- - [Uploading DataFrames](#uploading_dataframes)
- - [Readouts](#readouts)
- - [Stats & Graphing](#stats_and_graphing)
+- [Usage Guide](#usage-guide)
+  - [Contents](#contents)
+  - [Save Database(s)](#save-databases)
+  - [Executing SQL Directly ](#executing-sql-directly-)
+    - [Quick Execution](#quick-execution)
+    - [Reusing a Connector](#reusing-a-connector)
+  - [Executing SQL Files \& Exporting Results ](#executing-sql-files--exporting-results-)
+  - [Executing SQL Files Without Splitting Queries ](#executing-sql-files-without-splitting-queries-)
+  - [Setting Isolation Level ](#setting-isolation-level-)
+  - [Inspecting DataFrames](#inspecting-dataframes)
+  - [Running the 'Ribosome' (single-line control)](#running-the-ribosome-single-line-control)
+  - [Extracting Spreadsheets](#extracting-spreadsheets)
+  - [Uploading DataFrames](#uploading-dataframes)
+  - [Readouts](#readouts)
+  - [Stats \& Graphing](#stats--graphing)
+    - [Migrating graph calls to Kraken v1.7](#migrating-graph-calls-to-kraken-v17)
 
 ## Save Database(s)
 See [Installation and Setup Guide](./installation-and-setup-guide.md) to save database connections.
@@ -328,33 +334,105 @@ results = kraken.execute("RESEARCH", "SELECT TOP 100 * FROM prescriptions")
 Note that turning off readouts will also silence progress bars on SQL execution.
 
 ## Stats & Graphing<a id="stats_and_graphing"></a>
-Kraken provides convenience functions for basic statistics and graphing. These functions can be used with `DataFrame` and `Result`, and `ResultList` objects if a `df_name` is provided. The `examine()` function can be used to get basic descriptive statistics such as nullity, cardinality, standard_deviation, skewness, kurtosis and outliers. The `graph()` function supports a number of plots such as density, bar, stacked, box, violin, and scatter. Inclusion of x and y variables, and x and y aggregation, will depend on the graph being used.
+Kraken provides convenience functions for basic statistics and graphing. These functions can be used with `DataFrame` and `Result`, and `ResultList` objects if a `df_name` is provided. The `examine()` function can be used to get basic descriptive statistics such as nullity, cardinality, standard_deviation, skewness, kurtosis and outliers. The `graph()` function prepares row-level data using Kraken's aggregation rules, then creates an interactive Plotly density, histogram, bar, stacked, box, violin, scatter, line, area, or timeline graph. Generated graphs support hover details, zooming, panning, legend selection, reset, and image download.
 
 Note that these functions are intended to be useful for rapid exploration of datasets, and not a replacement for proper statistical analysis and graphing.
+
+Kraken includes deterministic synthetic data for examples and experimentation. It contains no real patient or clinical data:
+
+```python
+from kraken import demo
+
+results = demo.generate_demo_data()
+```
+
+Pass `output_dir="demo_data"` to additionally write the patient, inpatient-spell, and laboratory tables as CSV files.
 
 ```python
 # Example examination
 # - unique ceiling defaults to 10, but can be increased to calculate category coverage for larger groups
 # - when show_results=True (default), Jupyter notebooks will automatically display the results
-# - returning to df_stats allows the StatsPack to be stored and called
+# - examine always returns a compact StatsPack with selectable .stats and .categories DataFrames
 df = kraken.execute(database="RESEARCH", sql="SELECT * FROM patients")
-df_stats = kraken.examine(df, unique_ceiling=10, show_results=False, return_results=True)
+df_stats = kraken.examine(df, unique_ceiling=10, show_results=False)
 display(df_stats.stats)
 display(df_stats.categories)
 
 ```
 
-Finally, graph a numeric column `DataFrame`, and explore the use of x/y aggregation. When it comes to aggregation, think about the nature of the graph and therefore use of continuous, ordinal, or categorial values. A few examples are below - feel free to experiment with your own datasets with `x_agg` and `y_agg`. Y-values will by default represent simple counts of the given column (note, not sum), but `y_agg` supports alternate bahviour.
+`return_results` remains available as a deprecated compatibility argument but has no effect. `examine()` always returns `StatsPack`, independently of `show_results`. Its compact representation reports the shapes of the two result tables without printing their contents; select `.stats` or `.categories` to inspect either DataFrame.
+
+Finally, graph a `DataFrame` and explore x/y aggregation. Kraken validates each column according to its role before preparing the plot. A quantitative column contains real `int` or `float` values, or timedeltas; this includes NumPy scalar and nullable Pandas dtypes but excludes booleans, complex values, and datetimes. Box, violin, density, and scatter y axes are quantitative. Density, histogram, and scatter x axes may also contain datetimes, while timeline start and end axes must contain datetimes.
+
+Kraken attempts an all-or-nothing conversion where a role requires a quantitative or temporal dtype. Numeric conversion is attempted before timedelta conversion; recognised date axes are converted when `convert_dates=True`. Every successful conversion reports the column and old/new dtype through the suppressible `kraken.readout` warning interface, and the converted dtype is retained in `GraphResult.data`. If any non-null value prevents conversion, Kraken raises `GraphConversionError` without silently removing that value. Setting `convert_dates=False` disables automatic date conversion, including for timelines.
+
+Date `x_agg` values support `minute`, `hour`, `day`, `week`, `month`, and `year`. Weekly aggregation runs from Monday through Sunday and uses the Monday start date as the aggregated x value. Numeric `x_agg` accepts a finite positive `int` or `float`, including NumPy real scalars, but not booleans. Numeric bins are displayed in ascending order, including across zero, and empty intervals remain visible as empty x-axis categories. Numeric widths cannot bin timedeltas because no unit is implied. Box and violin bins retain every individual observation.
+
+Aggregate graphs use simple counts by default rather than sums. `y_agg` supports `count`, `countd`, `sum`, `mean`, `mode`, and `median`. `count`, `countd`, and `mode` accept any dtype; a tied mode uses the first deterministic Pandas result. `sum`, `mean`, and `median` require values that are quantitative or can be converted to quantitative values. If y is omitted, the operation is applied to a duplicate of x. Histograms support every y aggregation over x, although Kraken warns that a bar chart may communicate `sum`, `mean`, `mode`, or `median` more clearly.
+
+`group_colour` is always treated as a discrete grouping field. Numeric, boolean, categorical, and missing group values therefore create separate named traces rather than a continuous colour scale. This display conversion does not change the dtype in the prepared `GraphResult.data` table.
+
+Every call returns a `GraphResult`. Its `figure` field contains the editable Plotly figure and its `data` field contains the exact prepared table plotted by Kraken. Graphs display immediately by default; pass `show=False` to build one without displaying it. Plot width is responsive to the notebook output container by default. Use positive integer `width` and `height` values of at least 10 pixels for explicit dimensions, or retain the legacy `figsize` argument. Set `scroll=True` to request a wide canvas for plots that need horizontal scrolling in the host output. VS Code sidebar dimensions are not exposed to the Python kernel, so responsive sizing follows the rendered output container rather than calculating sidebar widths directly. Newly added interactive options are keyword-only so the historical positional argument order remains stable.
+
+Rendered figures use Kraken's Plotly theme: a high-contrast blue/orange-led sequence with 24 discrete colours before cycling, neutral grey for `(Missing)`, human-readable aggregate and hover labels, concise facet headings, restrained grids, and consistent typography and spacing. Categorical x labels on bar and stacked graphs are ordered case-insensitively and alphabetically, while explicitly ordered Pandas categoricals and numeric interval bins retain their declared order. Renderer-specific defaults keep histogram bins contiguous, soften dense scatter and distribution marks, show an internal box and mean line on violins, associate grouped regression lines with their point colours, and give timelines enough vertical space while retaining responsive width. Passing `alpha`, labels, or explicit dimensions continues to override the corresponding visual defaults.
+
+### Migrating graph calls to Kraken v1.7
+
+Before Kraken v1.7, `graph()` returned `None` by default or a prepared `DataFrame` when `return_results=True`. Kraken v1.7 always returns `GraphResult`:
 
 ```python
-# Example graphing
-# - saving to a variable (here: g, g1, etc), saves the aggregation used to produce the graph.
+# Before Kraken v1.7
+data = kraken.graph(df, x="category", graph="bar", return_results=True)
+
+# Kraken v1.7
+result = kraken.graph(df, x="category", graph="bar")
+data = result.data
+figure = result.figure
+```
+
+`return_results` remains available temporarily as a deprecated no-op. Passing it does not change the v1.7 return type.
+
+| Graph | X value | Y value | X aggregation | Y aggregation | Colour groups |
+| --- | --- | --- | --- | --- | --- |
+| `density` | Quantitative or datetime | Optional quantitative | No | No | Yes |
+| `histogram` | Quantitative or datetime | Omitted | Date period or numeric width | Yes, over x | Yes |
+| `bar`, `stacked`, `line`, `area` | Any | Optional; defaults to count of x | Date period or numeric width | Yes | Yes |
+| `box`, `violin` | Any | Required quantitative | Row-preserving date or numeric bins | No | Yes |
+| `scatter` | Quantitative or datetime | Required quantitative | No | No | Yes |
+| `timeline` | Required datetime start plus `x_end` | Required label/category; plotted on y | No | No | Yes |
+| `aggregation` | Any | Optional; defaults to count of x | Date period or numeric width | Yes | Yes |
+
+For histograms, omitting `x_agg` counts each distinct x value. Pass a numeric `x_agg` value to opt into fixed-width bins for continuous data; Kraken does not choose bins automatically. Date histograms accept the documented date periods and retain timezone information.
+
+Timeline ranges permit equal start/end timestamps but reject rows whose end precedes their start. With `discard_null_aggs=True`, rows missing either timestamp are discarded with a count warning. With it set to `False`, Kraken raises `TimelineDataError` and suggests enabling the option. A timeline with no usable rows raises an error. Density plots similarly fail as a whole with `InsufficientGraphDataError` if any requested colour group lacks enough usable, varying data for its KDE.
+
+Graph modifiers follow the renderer capability matrix below. “Grouping only” hover means the column must also be `x`, `group_colour`, `facet_row`, or `facet_col`, because arbitrary row values do not survive aggregation. Structural unsupported combinations raise a `GraphCapabilityError` before Kraken aggregates or renders the data. Non-default renderer tuning options used on another graph, such as `bw_adjust`, `showfliers`, or `linear_regression`, are ignored with a suppressible warning.
+
+| Graph | Facets | Marginals | Custom hover | Mean confidence interval | Regression |
+| --- | --- | --- | --- | --- | --- |
+| `bar`, `line` | Yes | No | Grouping only | Figure and data | No |
+| `stacked`, `histogram` | Yes | No | Grouping only | No | No |
+| `area` | No | No | No | No | No |
+| `scatter` | Yes | Yes | Row level | No | Yes; opt-in |
+| `density` | No | No | No | No | No |
+| `box`, `violin`, `timeline` | Yes | No | Row level | No | No |
+| `aggregation` | No | No | No | Data only | No |
+
+Facet columns must be different from the x/y axis columns and from each other. Area and density facets are rejected until those renderers have explicit subplot implementations. Scatter regression is disabled by default; pass `linear_regression=True` to enable it. Regression lines are calculated independently for every facet and colour group and are placed on the corresponding subplot. They inherit the point-group colours but do not add duplicate entries to the legend.
+
+Mean confidence intervals require a numeric y column and `y_agg="mean"`. They are rendered by bar and line graphs and returned as data only by aggregation mode. A group with one usable observation retains its mean, while its interval columns remain null because its variance cannot be estimated.
+
+Anticipated graph failures inherit from `kraken.exceptions.GraphingError`, which remains a `ValueError` for compatibility. Its documented categories are `GraphCapabilityError`, `GraphColumnError`, `GraphDataTypeError` (including `GraphConversionError`), `GraphAggregationError`, `GraphDataError` (including `TimelineDataError` and `InsufficientGraphDataError`), `GraphRenderingError`, and `GraphExportError` (including `GraphExportDependencyError`). Error messages identify the graph, column or value, and the accepted values or dtypes. Expected Pandas, SciPy, and Plotly failures retain their chained cause; unrelated dependency and filesystem errors are not hidden.
+
+```python
+# Example graphing: each result contains both `.figure` and `.data`.
 
 # density plot of year of birth:
-g = kraken.graph(df=df, graph='density', x='year_of_birth', return_results=True)
+density = kraken.graph(df=df, graph='density', x='year_of_birth')
 
 # bar chart of date_of birth vs count, aggregated to 'year'
-g1 = kraken.graph(df=df, graph='bar', x='date_of_birth', x_agg='year', return_results=True)
+yearly = kraken.graph(df=df, graph='bar', x='date_of_birth', x_agg='year')
+display(yearly.data)
 
 # bar chart of age group vs average result
 kraken.graph(df=df, graph='bar', x='age', x_agg=10, y='result_numerical', y_agg='mean')
@@ -365,9 +443,27 @@ kraken.graph(df=df, graph='bar', x='age', x_agg=10, y='result_numerical', y_agg=
 # stacked bar chart of age and gender vs count, aggregated to groups of 10 years
 kraken.graph(df=df, graph='stacked', x='age', x_agg=10, group_colour='sex')
 
-# violin pliot of deprivation vs result by gender
+# violin plot of deprivation vs result by gender
 kraken.graph(df=df_new, graph='violin', x='imd_decile', y='result_numerical', group_colour='gender')
 
 # density graphs can plot on each axis
 kraken.graph(df=df_new, graph='density', x='age', y='result_numerical', group_colour='gender')
+
+# line and area charts use the same aggregation preparation as bar charts;
+# area colour groups are stacked cumulatively and use vertical hover details
+kraken.graph(df=df, graph='line', x='date_of_birth', x_agg='year', group_colour='gender')
+kraken.graph(df=df, graph='area', x='date_of_birth', x_agg='year', group_colour='gender')
+
+# facet a scatter graph; each panel and colour gets its own regression
+kraken.graph(df=df, graph='scatter', x='age', y='result_numerical', facet_col='sex', group_colour='gender', linear_regression=True)
+
+# render t-based confidence intervals around group means
+kraken.graph(df=df, graph='bar', x='sex', y='result_numerical', y_agg='mean', error='confidence_interval')
+
+# build without displaying, then customise or export the graph
+result = kraken.graph(df=df, graph='bar', x='age', x_agg=10, show=False)
+result.write_html('age_distribution.html')
+result.write_image('age_distribution.png')
 ```
+
+`GraphResult.write_html()` creates an interactive HTML file. `GraphResult.write_image()` supports Plotly's static formats, including PNG, JPEG, WebP, SVG, and PDF. Kaleido is included as a core Kraken dependency, so no image-export extra is needed. Kaleido v1 does not bundle a browser, however, and requires a compatible Chrome or Chromium installation. Install one directly, run `plotly_get_chrome`, or call `plotly.io.get_chrome()` from Python; see Plotly's [static image export guide](https://plotly.com/python/static-image-export/) for current setup details. Graphs created with `graph='aggregation'` have no figure and therefore cannot be exported.

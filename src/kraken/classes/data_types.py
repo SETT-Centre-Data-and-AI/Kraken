@@ -21,3 +21,10 @@ class StatsPack:
     df_name: str
     stats: DataFrame
     categories: DataFrame
+
+    def __repr__(self) -> str:
+        return (
+            f"StatsPack(df_name={self.df_name!r}, "
+            f"stats=DataFrame(shape={self.stats.shape!r}), "
+            f"categories=DataFrame(shape={self.categories.shape!r}))"
+        )

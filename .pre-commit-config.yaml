@@ -27,3 +27,12 @@ repos:
         args: ["--select=E,F,W,C90,B,B9,I", "--ignore=E501,B006,C901", "--extend-fixable=B007", "--fix"]
       - id: ruff-format
         types_or: [ python, pyi ]
+
+  - repo: local
+    hooks:
+      - id: mypy-graphing
+        name: Type-check graphing package
+        entry: uv run mypy src/kraken/graphing
+        language: system
+        pass_filenames: false
+        files: ^src/kraken/graphing/.*\.py$
