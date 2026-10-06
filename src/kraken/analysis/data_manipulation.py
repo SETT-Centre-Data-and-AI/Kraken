@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from IPython.display import display
 from pandas import DataFrame
-from pandas.api.types import is_numeric_dtype
+from pandas.api.types import is_numeric_dtype, is_object_dtype, is_string_dtype
 
 from kraken.classes.data_types import StatsPack
 from kraken.exceptions import DuplicateColumnError
@@ -100,7 +100,7 @@ def examine(
             if is_numeric_dtype(df[column])
             else False
         )
-        if df[column].dtype == "object":
+        if is_object_dtype(df[column]) or is_string_dtype(df[column]):
             max_length = df[column].dropna().astype(str).str.len().max()
             max_length = int(max_length) if pd.notna(max_length) else None
         else:
@@ -205,7 +205,7 @@ def examine(
 def date_converter_df(
     df: DataFrame, columns: str | list | None = None, readouts: bool = True
 ) -> DataFrame:
-    """Checks DataFrame for missed date columns identified as type 'object' by pandas, and converts those found in place.
+    """Checks object/string columns for missed dates and converts those found in place.
 
     Args:
         df (DataFrame): DataFrame
@@ -233,7 +233,11 @@ def date_converter_df(
         columns = [columns]
 
     for col in columns:
-        if col is None or isinstance(df[col], DataFrame) or df[col].dtype != "object":
+        if (
+            col is None
+            or isinstance(df[col], DataFrame)
+            or not (is_object_dtype(df[col]) or is_string_dtype(df[col]))
+        ):
             pass
         else:
             values = df[col].map(

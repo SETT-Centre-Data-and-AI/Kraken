@@ -1,10 +1,10 @@
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
-from kraken.analysis.data_manipulation import check_df_integers as clean_dataframe
 from kraken.classes.pack_lists import ResultList
 from kraken.classes.packs import Result
 from kraken.support.readout import readout
@@ -14,25 +14,50 @@ from kraken.support.support import _check_filetype, _load_filepaths, calculate_r
 def extract_spreadsheets(
     filepaths: str | list[str] | Path | list[Path], clean_df: bool = True, **kwargs: Any
 ) -> ResultList:
-    """Takes paths, or list of paths, to spreadsheet files or directories of spreadsheet
-    files and outputs a list of results with dataframes. Outputs list in order of user
-    directory/file input. Raises errors if a filepath does not point to a spreadsheet
-    file or a valid directory, or if no spreadsheet files are detected. Raises warnings
+    """Imports CSV, XLS, XLSX and Parquet files into a ResultList. Outputs results in
+    order of user directory/file input. Raises errors if a filepath does not point to
+    a supported file or a valid directory, or if no supported files are detected. Raises warnings
     if any given directory filepath returns no files.
 
     Args:
         filepaths (str | list[str]): Path or list of paths to spreadsheet files or
             directories of spreadsheet files
-        clean_df (bool): Checks DataFrame after pandas generation and applies cleaning,
-            including converting float64 to Int64 if applicable (recommended).
+        clean_df (bool): Uses pandas' numpy_nullable reader backend by default for
+            CSV/Excel, avoiding float intermediates for nullable signed integers.
+            False leaves backend selection to pandas. Explicit dtype/backend options
+            are honored. Parquet retains its stored schema regardless of this flag.
+        kwargs: Forwarded to the relevant pandas reader. CSV/Excel default to
+            keep_default_na=False and na_values=[""], preserving literal NA strings
+            but treating blanks as missing. Override these defaults as needed.
+            Use dtype for identifiers or unsigned integers, converters for exact
+            decimals, and parse_dates for CSV timestamps. These formats do not
+            retain a full column schema.
+            Options must be valid for every requested format when mixing file types.
 
     Returns:
-        list: List of results, consisting of tuples as: (filename, df name, dataframe, df, filepath)
+        ResultList: Imported dataframes with filename, dataframe name and path metadata.
     """
     start = datetime.now()
-    supported_extensions = ["csv", "xlsx", "xls"]
-    keep_default_na = False
-    na_values = [""]
+    supported_extensions = ["csv", "xlsx", "xls", "parquet"]
+    reader_kwargs = {"keep_default_na": False, "na_values": [""], **kwargs}
+    if clean_df:
+        reader_kwargs.setdefault("dtype_backend", "numpy_nullable")
+    parse_dates = reader_kwargs.get("parse_dates")
+    declared_dtypes = reader_kwargs.get("dtype")
+    inferred_date_columns: list[str | int] = []
+    if "dtype_backend" in reader_kwargs and isinstance(parse_dates, list):
+        date_dtypes: dict[str | int, Any]
+        if declared_dtypes is None:
+            date_dtypes = {}
+        elif isinstance(declared_dtypes, dict):
+            date_dtypes = declared_dtypes.copy()
+        else:
+            date_dtypes = defaultdict(lambda: declared_dtypes)
+        for column in parse_dates:
+            if isinstance(column, (str, int)) and column not in date_dtypes:
+                date_dtypes[column] = object
+                inferred_date_columns.append(column)
+        reader_kwargs["dtype"] = date_dtypes
 
     # Load Filepaths
     filepaths = _load_filepaths(filepaths, supported_extensions)
@@ -49,12 +74,8 @@ def extract_spreadsheets(
             filename = Path(filepath).name
             df_name = Path(filepath).stem
             readout.print(f" - From csv '{filename}'...", end="")
-            df = pd.read_csv(
-                filepath,
-                keep_default_na=keep_default_na,
-                na_values=na_values,
-                **kwargs,
-            )
+            df = pd.read_csv(filepath, **reader_kwargs)
+            _restore_parsed_dates(df, inferred_date_columns)
             spreadsheet_packs.append(
                 Result(
                     filename=filename,
@@ -76,12 +97,8 @@ def extract_spreadsheets(
             with pd.ExcelFile(filepath) as file:
                 for sheet_name in file.sheet_names:
                     df_name = str(sheet_name)
-                    df = file.parse(
-                        df_name,
-                        keep_default_na=keep_default_na,
-                        na_values=na_values,
-                        **kwargs,
-                    )
+                    df = file.parse(df_name, **reader_kwargs)
+                    _restore_parsed_dates(df, inferred_date_columns)
                     spreadsheet_packs.append(
                         Result(
                             filename=filename,
@@ -96,10 +113,24 @@ def extract_spreadsheets(
                     df_name_list.append(df_name)
                     readout.print(f"   - loaded dataframe '{df_name}'")
 
-    # Clean SpreadsheetPack DataFrames
-    if clean_df:
-        for pack in spreadsheet_packs:
-            pack.df = clean_dataframe(pack.df)
+        if _check_filetype(filepath, "parquet"):
+            filename = Path(filepath).name
+            df_name = Path(filepath).stem
+            readout.print(f" - From parquet '{filename}'...", end="")
+            df = pd.read_parquet(filepath, **kwargs)
+            spreadsheet_packs.append(
+                Result(
+                    filename=filename,
+                    df_name=df_name,
+                    df=df,
+                    filepath=filepath,
+                    db_alias="",
+                    platform="",
+                    sql="",
+                )
+            )
+            df_name_list.append(df_name)
+            readout.print(f" loaded dataframe '{df_name}'")
 
     stop = datetime.now()
     readout.print(
@@ -123,3 +154,9 @@ def extract_spreadsheets(
 
     readout.print("")
     return spreadsheet_packs
+
+
+def _restore_parsed_dates(df: pd.DataFrame, columns: list[str | int]) -> None:
+    for position, name in enumerate(df.columns):
+        if name in columns or position in columns:
+            df.isetitem(position, df.iloc[:, position].infer_objects().array)

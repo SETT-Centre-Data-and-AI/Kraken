@@ -42,9 +42,15 @@ def export_results(
     **kwargs: Any,
 ) -> None:
     """
-    Exports results or a dataframe to a supported extension type (csv or xlsx).
+    Exports results or a dataframe to CSV, XLSX or Parquet without its index.
     For filetypes supporting multiple dataframes (such as xlsx), the filename argument can be provided.
     For filetypes supporting single dataframes only (such as csv) the filename provided will be appended to the prefix (if given), with the dataframe name used instead.
+
+    CSV keeps datetime time components, including midnight, but carries no schema.
+    XLSX writes string values literally and uses distinct date/datetime display formats;
+    Excel numeric precision and timestamp/timezone limits still apply. Parquet is the
+    typed round-trip format for supported column types. Export does not clean or mutate
+    caller dataframes. Promote meaningful indexes to columns before exporting.
 
     Args:
         results (Result | ResultList | DataFrame): results to export.

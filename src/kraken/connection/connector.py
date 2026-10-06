@@ -3,17 +3,17 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any, Generic, Literal, Protocol, Type, TypeVar, runtime_checkable
 
+import pandas as pd
 import pyodbc  # type: ignore[import-not-found]
 import sqlalchemy as sa
 from pandas import DataFrame
 from sqlalchemy.engine.url import URL
 
-from kraken.analysis.data_manipulation import check_df_integers as clean_dataframe
 from kraken.connection.support import (
+    DEFAULT_ARRAYSIZE,
+    _check_execution_error,
     _compile_pyodbc_connection_string,
     _split_pyodbc_connection_string,
-    _check_execution_error,
-    DEFAULT_ARRAYSIZE,
 )
 from kraken.credentials.credentials import Credentials
 from kraken.credentials.helpers import fetch_credentials
@@ -266,8 +266,9 @@ class Connector(ABC, Generic[TConn, TCursor]):
             -   close (bool): If True, closes the connection after executing. Defaults to None, using the Connector default (Connector.autoclose).
             -   batch_size (int): Downloads data in batches. Uses current Connector.batch_size if None. Set to 0 to
                 download all data without batching.
-            -   clean_df (bool): Cleans DataFrame after pandas generation, including converting float64 to Int64 if
-                applicable (recommended).
+            -   clean_df (bool): Preserves fetched scalar types during DataFrame construction,
+                using nullable integer/boolean dtypes where needed without a float intermediate.
+                Float values remain floats. False uses ordinary pandas inference.
             -   check_column_duplicates (bool): Checks DataFrame for duplicate column names and throws warning.
             -   header_indent (str): Prefix each readout with an indent (e.g. ' -> ')
             -   progress (bool): If True, activates query progress bar. Switching to False may save a little
@@ -432,7 +433,32 @@ class Connector(ABC, Generic[TConn, TCursor]):
         if df is None:
             return
 
-        df = clean_dataframe(df) if clean_df else df
+        if clean_df:
+            for position in range(len(df.columns)):
+                column = df.iloc[:, position]
+                raw_values = column.to_numpy()
+                present = pd.notna(raw_values)
+                nullable = not present.all()
+                values = raw_values[present] if nullable else raw_values
+                scalar_type = pd.api.types.infer_dtype(values, skipna=True)
+                converted: pd.Series[Any]
+                if scalar_type == "integer":
+                    dtype: Literal["Int64", "int64", "UInt64", "uint64"]
+                    minimum, maximum = values.min(), values.max()
+                    if -(2**63) <= minimum and maximum < 2**63:
+                        dtype = "Int64" if nullable else "int64"
+                    elif 0 <= minimum and maximum < 2**64:
+                        dtype = "UInt64" if nullable else "uint64"
+                    else:
+                        continue
+                    converted = column.astype(dtype)
+                elif scalar_type == "boolean":
+                    converted = column.astype("boolean" if nullable else "bool")
+                elif scalar_type in ("mixed-integer", "mixed-integer-float"):
+                    continue
+                else:
+                    converted = column.infer_objects()
+                df.isetitem(position, converted.array)
         if check_column_duplicates and df.columns.has_duplicates:
             dupe_cols = df.columns[df.columns.duplicated()].to_list()
             readout.warn(
@@ -495,7 +521,9 @@ class Connector(ABC, Generic[TConn, TCursor]):
                     progress.update_header(
                         header=f"{indent}Query: {query_name} Processing  |"
                     )
-                    df = DataFrame(data=rows, columns=columns)
+                    df = DataFrame(
+                        data=rows, columns=columns, dtype=object if clean_df else None
+                    )
                     df = self._process_dataframe(
                         df=df,
                         clean_df=clean_df,
@@ -626,8 +654,9 @@ class SaConnector(
             close (bool): If True, closes the connection after executing. Defaults to None, using the Connector default (Connector.autoclose).
             batch_size (int): Downloads data in batches. Uses current Connector.batch_size if None. Set to 0 to
                 download all data without batching.
-            clean_df (bool): Cleans DataFrame after pandas generation, including converting float64 to Int64 if
-                applicable (recommended).
+            clean_df (bool): Preserves fetched scalar types during DataFrame construction,
+                using nullable integer/boolean dtypes where needed without a float intermediate.
+                Float values remain floats. False uses ordinary pandas inference.
             check_column_duplicates (bool): Checks DataFrame for duplicate column names and throws warning.
             header_indent (str): Prefix each readout with an indent (e.g. ' -> ')
             progress (bool): If True, activates query progress bar. Switching to False may save a little

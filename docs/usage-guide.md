@@ -14,6 +14,7 @@ The following examples will use a Jupyter Notebook, imaginary SQL, and a MSSQL d
   - [Inspecting DataFrames](#inspecting-dataframes)
   - [Running the 'Ribosome' (single-line control)](#running-the-ribosome-single-line-control)
   - [Extracting Spreadsheets](#extracting-spreadsheets)
+    - [Data Fidelity](#data-fidelity)
   - [Uploading DataFrames](#uploading-dataframes)
   - [Readouts](#readouts)
   - [Stats \& Graphing](#stats--graphing)
@@ -253,12 +254,41 @@ When exporting, note the overwrite warning and renaming behaviour if you run thi
 These functions can take a number of arguments worth experimenting with.
 
 ## Extracting Spreadsheets<a id="extracting_spreadsheets"></a>
-Similarly, Kraken can also extract .csv or .xlsx files directly into `Result` objects in a `ResultList`, as per SQL query outputs. Let's extract everything that we just exported:
+Similarly, Kraken can extract .csv, .xls, .xlsx and .parquet files directly into `Result` objects in a `ResultList`, as per SQL query outputs. Let's extract everything that we just exported:
 ```python
 imports = kraken.extract_spreadsheets(filepaths="export_folder")
 ```
 
 The resulting `imports` can be manipulated as previously outlined for `ResultList` and `Result` objects.
+
+### Data Fidelity
+
+Kraken preserves known scalar types and values rather than choosing a type solely because values happen to be whole numbers or timestamps happen to be midnight. The available guarantees depend on the source and file format:
+
+| Path | Preserved Behavior | Limits |
+| --- | --- | --- |
+| SQL extraction, `clean_df=True` | Driver-returned integers are constructed without a float intermediate; nullable signed/unsigned integers and booleans receive suitable dtypes. Floats stay floats, `Decimal` values stay exact objects, and dates remain distinct from datetimes. | Guarantees start with values returned by the driver, not the original SQL schema. Empty/all-null columns have no recoverable type without source metadata. Mixed integer/float columns and integers outside 64-bit ranges stay objects to avoid rounding. |
+| CSV export/import | Exported datetimes include a time component even at midnight; supported timestamp fractions and offsets are retained. Nullable integers are written without a `.0` suffix. Clean import uses nullable reader inference instead of repairing rounded floats afterward. | CSV has no column schema. Supply import types for identifiers, exact decimals and unsigned integers above the signed range, and request timestamp parsing explicitly. Empty strings and missing values both export as blank fields by default. Entirely blank rows may be skipped by the reader. |
+| XLSX export/import | Date and datetime cells have distinct display formats, including time for midnight datetimes. Strings beginning with `=` stay literal text; URLs are not automatically converted to hyperlinks. Explicit import types are honored. | Excel numeric precision is limited to roughly 15 significant digits. Datetime serialization/readback can reduce subsecond precision; the seconds-only display format is not itself evidence of truncation. Timezone-aware datetimes are rejected, not silently stripped. Excel import still infers types, including date versus datetime. |
+
+For CSV/Excel imports, `clean_df=True` now defaults to pandas' `numpy_nullable` backend. This can produce `Int64`, `Float64`, `boolean` and `string` extension dtypes rather than their legacy NumPy/object counterparts. Caller-supplied `dtype`, `dtype_backend` and converters take precedence. `clean_df=False` opts out of this default and, for SQL extraction, returns to ordinary pandas inference, which can represent integers with nulls as floats and lose large-integer precision. The standalone `check_df_integers()` helper remains an explicitly requested heuristic, not a schema-preservation guarantee.
+
+CSV/Excel import defaults preserve literal strings such as `NA`, `NULL` and `nan`, but treat blank cells as missing. Declare types and null conventions when those distinctions matter:
+
+```python
+imports = kraken.extract_spreadsheets(
+    "events.csv",
+    dtype={"identifier": str, "count": "UInt64", "measurement": "float64"},
+    parse_dates=["timestamp"],
+)
+
+literal_text = kraken.extract_spreadsheets(
+    "labels.csv",
+    dtype=str,
+    keep_default_na=False,
+    na_values=[],
+)
+```
 
 ## Uploading DataFrames<a id="uploading_dataframes"></a>
 Kraken can also upload data to databases:
