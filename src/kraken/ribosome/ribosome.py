@@ -56,8 +56,8 @@ def run(
         username (str, optional): If entered, downstream execution will attempt to use this username. If left
             blank, Kraken will use the default username saved for each given database alias in credential manager.
             Defaults to None.
-        clean_df (bool): Checks each DataFrame after pandas generation and applies cleaning, including converting
-            float64 to Int64 if applicable (recommended).
+        clean_df (bool): Preserves fetched scalar types during DataFrame construction, including
+            nullable integers/booleans without a float intermediate. False uses ordinary pandas inference.
         export_directory (str, optional): Sets a directory to export results to. If left blank, Kraken ignores
             exporting. Enter "" to export to directory of expecting script. Defaults to None.
         export_extension (str, optional): If exporting, Kraken will export as this extension if supported.

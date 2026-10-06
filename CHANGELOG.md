@@ -1,3 +1,16 @@
+## v1.7.4 (2026-10-02)
+
+### Fix
+
+- **export**: fidelity retained in datetime export across whole file, rather than pandas csv export chunking evaluating each chunk separately
+
+## v1.7.3 (2026-10-02)
+
+### Feat
+
+- **connector.py**: optimised data processing
+- **fidelity**: sql extraction and data import/export better preservs data fidelity, rather than handing off to Pandas
+
 ## v1.7.2 (2026-09-14)
 
 ### Feat

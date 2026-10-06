@@ -53,8 +53,8 @@ def execute(
         username (str, optional): If blank, Kraken will use the default username for the given alias. Otherwise,
             Kraken will fetch saved credentials for the given username/database alias pair. Defaults to None.
         batch_size (int): Downloads rows in batches. Use `batch_size=0` to fetch all data without batching.
-        clean_df (bool): Checks DataFrame after pandas generation and applies cleaning, including converting
-            float64 to Int64 if applicable (recommended).
+        clean_df (bool): Preserves fetched scalar types during DataFrame construction, including
+            nullable integers/booleans without a float intermediate. False uses ordinary pandas inference.
         isolation_level (Literal["SERIALIZABLE", "REPEATABLE READ", "READ COMMITTED", "READ UNCOMMITTED", "AUTOCOMMIT"] | None):
             SQL Alchemy isolation level. Defaults to None. If errors are raised related to not being able to perform
             queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT".
@@ -152,8 +152,8 @@ def execute_sql(
         query_list (list[Query]): List of QueryList of Query objects prepared by extract_sql()
         username (str, optional): Overriding username to fetch database credentials. Defaults to None. WARNING:
             Kraken will attempt to use this username to execute all queries.
-        clean_df (bool): Checks each DataFrame after pandas generation and applies cleaning, including converting
-            float64 to Int64 if applicable (recommended).
+        clean_df (bool): Preserves fetched scalar types during DataFrame construction, including
+            nullable integers/booleans without a float intermediate. False uses ordinary pandas inference.
         batch_size (int): Downloads rows in batches. Use `batch_size=0` to fetch all data without batching.
         concurrent (bool): If True, executes all SQL files concurrently. Queries within each SQL file will still
             execute sequentially. Defaults to False.
