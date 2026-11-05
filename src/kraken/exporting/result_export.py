@@ -62,6 +62,9 @@ def export_results(
         overwrite (bool, optional): If False, Kraken will append the output file in the event of a conflict. If True, Kraken will overwrite the existing file. Defaults to False.
         zip_filename (str, optional): If provided, Kraken will zip files in memory before writing to this filename, rather than directly. Defaults to None (direct writing of files).
         delimiter (str, optional): If exporting to a delimited file format (like CSV), this is used as the delimiter. Defaults to ",".
+        excel_tables (bool, optional): For XLSX, write each eligible worksheet as an
+            Excel table. Defaults to True. Invalid column names cause a warning and
+            leave that worksheet unformatted as a table.
     """
 
     # Prepare

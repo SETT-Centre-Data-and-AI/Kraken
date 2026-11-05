@@ -248,7 +248,7 @@ def date_converter_df(
                     df[col] = pd.to_datetime(values, format=format)
                     if readouts:
                         readout.warn(
-                            f"Note: column '{col}' converted to datetime64[ns]"
+                            f"Note: column '{col}' converted to {df[col].dtype}"
                         )
                     break
                 except (TypeError, ValueError):

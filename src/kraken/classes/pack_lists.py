@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import inspect
 from collections import UserList
-from typing import Iterable, Literal, Union, overload
+from collections.abc import Iterable
+from typing import Literal, overload
 
 from pandas import DataFrame
 from pandasql import sqldf  # type: ignore[import-untyped]
@@ -19,21 +20,56 @@ class ResultList(UserList[Result]):
     def __init__(self, initial_data: list[Result] | None = None):
         super().__init__(initial_data)
 
-    def copy(self, deep: bool = True) -> "ResultList":
+    def __remove(self, item: Result) -> None:
+        self.data.remove(item)
+
+    @overload
+    def __getitem__(self, index: int) -> Result: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> ResultList: ...
+
+    @overload
+    def __getitem__(self, index: str) -> Result: ...
+
+    def __getitem__(self, index: int | slice | str) -> Result | ResultList:
+        if isinstance(index, str):
+            return self.get(index)
+        return super().__getitem__(index)
+
+    def copy(self, deep: bool = True) -> ResultList:
         """Copies the ResultList.
 
         Args:
-            deep (bool, optional): Performs a full (deep) copy of the ResultList and all objects contained within. If False, performs a shallow copy of the top-level container only. Defaults to True (recommended).
+            deep (bool, optional): Performs a full (deep) copy of the ResultList and all objects
+            contained within. If False, performs a shallow copy of the top-level container only.
+            Defaults to True (recommended).
         """
         copy = ResultList([result.copy(deep=deep) for result in self.data])
         return copy
 
     def append(self, item: Result) -> None:
+        """Append a Result to the end of this list.
+
+        Args:
+            item (Result): Result object to append.
+
+        Raises:
+            TypeError: If item is not a Result.
+        """
         if not isinstance(item, Result):
             raise TypeError("Only Result objects can be appended")
         super().append(item)
 
     def extend(self, items: Iterable[Result]) -> None:
+        """Append each Result in an iterable to the end of this list.
+
+        Args:
+            items (Iterable[Result]): Iterable of Result objects to append.
+
+        Raises:
+            TypeError: If any item in the iterable is not a Result.
+        """
         for item in items:
             if not isinstance(item, Result):
                 raise TypeError("Only Result objects can be extended")
@@ -47,11 +83,28 @@ class ResultList(UserList[Result]):
     @overload
     def get(
         self, search_value: str, field_name: str = ..., get_all: bool = ...
-    ) -> Union[Result, "ResultList"]: ...
+    ) -> Result | ResultList: ...
 
     def get(
         self, search_value: str, field_name: str = "df_name", get_all: bool = False
-    ) -> Union[Result, "ResultList"]:
+    ) -> Result | ResultList:
+        """Find Result objects whose selected field matches a value.
+
+        When ``get_all`` is False, returns the first match and warns if there
+        are duplicates. When True, returns all matches in a ResultList.
+
+        Args:
+            search_value (str): Value to match against the selected field.
+            field_name (str, optional): Result field to search. Defaults to "df_name".
+            get_all (bool, optional): Whether to return every match. Defaults to False.
+
+        Raises:
+            KeyError: If field_name is not a field declared on Result.
+            ValueError: If no Result matches search_value.
+
+        Returns:
+            Result | ResultList: The first matching Result, or all matches when get_all is True.
+        """
         if field_name not in list(Result.__annotations__):
             raise KeyError(f"Cannot search '{field_name}' - no such attribute")
         found_results = ResultList()
@@ -78,7 +131,80 @@ class ResultList(UserList[Result]):
             readout.print(f"Returned {len(found_results)} results for {search_value}")
             return found_results
 
+    def drop(
+        self,
+        search_value: str | Result,
+        field_name: str = "df_name",
+        drop_all: bool = True,
+    ) -> None:
+        """Remove a Result object or matching Result objects from this list.
+
+        Passing a Result removes that object. Passing a string searches the
+        selected field; duplicate matches are warned about and either all or
+        only the first are removed according to ``drop_all``.
+
+        Args:
+            search_value (str | Result): Result object to remove, or value to search for.
+            field_name (str, optional): Result field to search for a string value. Defaults to "df_name".
+            drop_all (bool, optional): Whether to remove every match. Defaults to True.
+
+        Raises:
+            KeyError: If field_name is not a field declared on Result.
+            ValueError: If no matching Result is found, or the supplied Result is not in this list.
+        """
+        if isinstance(search_value, Result):
+            self.__remove(search_value)
+            return
+        if field_name not in Result.__annotations__:
+            raise KeyError(f"Cannot search '{field_name}' - no such attribute")
+        results = [
+            result
+            for result in self.data
+            if getattr(result, field_name, None) == search_value
+        ]
+        if not results:
+            raise ValueError(f"No {field_name} found called '{search_value}'")
+        if len(results) > 1:
+            removal_scope = (
+                f"all {len(results)} matches" if drop_all else "only the first match"
+            )
+            readout.warn(
+                f"\nWARNING: {len(results)} duplicate matches found; {removal_scope} will be dropped \n -> ",
+                end="",
+            )
+        if not drop_all:
+            results = results[:1]
+        for result in results:
+            self.__remove(result)
+
+    def remove(
+        self,
+        search_value: str | Result,
+        field_name: str = "df_name",
+        drop_all: bool = True,
+    ) -> None:
+        """Remove a Result or matching Result objects; equivalent to ``drop``.
+
+        A Result argument removes that object. A string argument is matched
+        against ``field_name``; duplicate matches are warned about and
+        ``drop_all`` determines whether all or only the first match is removed.
+
+        Args:
+            search_value (str | Result): Result object to remove, or value to search for.
+            field_name (str, optional): Result field to search for a string value. Defaults to "df_name".
+            drop_all (bool, optional): Whether to remove every match. Defaults to True.
+        """
+        self.drop(search_value=search_value, field_name=field_name, drop_all=drop_all)
+
     def convert_to_dict(self) -> dict[str, DataFrame]:
+        """Return the list's DataFrames keyed by their names.
+
+        If multiple Results have the same ``df_name``, later entries receive
+        a numbered suffix that avoids collisions with existing names.
+
+        Returns:
+            dict[str, DataFrame]: Mapping from unique DataFrame names to DataFrames.
+        """
         original_names = [item_pack.df_name for item_pack in self]
         item_dict: dict[str, DataFrame] = {}
 
@@ -289,12 +415,45 @@ class QueryList(UserList[Query]):
     def __init__(self, initial_data: list[Query] | None = None):
         super().__init__(initial_data)
 
+    def __remove(self, item: Query) -> None:
+        self.data.remove(item)
+
+    @overload
+    def __getitem__(self, index: int) -> Query: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> QueryList: ...
+
+    @overload
+    def __getitem__(self, index: str) -> Query: ...
+
+    def __getitem__(self, index: int | slice | str) -> Query | QueryList:
+        if isinstance(index, str):
+            return self.get(index)
+        return super().__getitem__(index)
+
     def append(self, item: Query) -> None:
+        """Append a Query to the end of this list.
+
+        Args:
+            item (Query): Query object to append.
+
+        Raises:
+            TypeError: If item is not a Query.
+        """
         if not isinstance(item, Query):
             raise TypeError("Only Query objects can be appended")
         super().append(item)
 
     def extend(self, items: Iterable[Query]) -> None:
+        """Append each Query in an iterable to the end of this list.
+
+        Args:
+            items (Iterable[Query]): Iterable of Query objects to append.
+
+        Raises:
+            TypeError: If any item in the iterable is not a Query.
+        """
         for item in items:
             if not isinstance(item, Query):
                 raise TypeError("Only Query objects can be extended")
@@ -308,13 +467,30 @@ class QueryList(UserList[Query]):
     @overload
     def get(
         self, search_value: str, field_name: str = ..., get_all: bool = ...
-    ) -> Union[Query, "QueryList"]: ...
+    ) -> Query | QueryList: ...
 
     def get(
         self, search_value: str, field_name: str = "df_name", get_all: bool = False
-    ) -> Union[Query, "QueryList"]:
+    ) -> Query | QueryList:
+        """Find Query objects whose selected field matches a value.
+
+        When ``get_all`` is False, returns the first match and warns if there
+        are duplicates. When True, returns all matches in a QueryList.
+
+        Args:
+            search_value (str): Value to match against the selected field.
+            field_name (str, optional): Query field to search. Defaults to "df_name".
+            get_all (bool, optional): Whether to return every match. Defaults to False.
+
+        Raises:
+            KeyError: If field_name is not an argument of Query.__init__.
+            ValueError: If no Query matches search_value.
+
+        Returns:
+            Query | QueryList: The first matching Query, or all matches when get_all is True.
+        """
         sig = inspect.signature(Query.__init__)
-        args = [name for name, _ in sig.parameters.items() if name != "self"]
+        args = [name for name in sig.parameters if name != "self"]
         if field_name not in args:
             raise KeyError(f"Cannot search '{field_name}' - no such attribute")
         found_results = QueryList()
@@ -340,11 +516,72 @@ class QueryList(UserList[Query]):
             readout.print(f"Returned {len(found_results)} results for {search_value}")
             return found_results
 
-    def drop(self, search_value: str, field_name: str) -> None:
-        _found = self.get(search_value=search_value, field_name=field_name)
-        found: QueryList = QueryList([_found]) if isinstance(_found, Query) else _found
-        for item in found:
-            self.data.remove(item)
+    def drop(
+        self,
+        search_value: str | Query,
+        field_name: str = "df_name",
+        drop_all: bool = True,
+    ) -> None:
+        """Remove a Query object or matching Query objects from this list.
+
+        Passing a Query removes that object. Passing a string searches the
+        selected field; duplicate matches are warned about and either all or
+        only the first are removed according to ``drop_all``.
+
+        Args:
+            search_value (str | Query): Query object to remove, or value to search for.
+            field_name (str, optional): Query field to search for a string value. Defaults to "df_name".
+            drop_all (bool, optional): Whether to remove every match. Defaults to True.
+
+        Raises:
+            KeyError: If field_name is not an argument of Query.__init__.
+            ValueError: If no matching Query is found, or the supplied Query is not in this list.
+        """
+        if isinstance(search_value, Query):
+            self.__remove(search_value)
+            return
+        sig = inspect.signature(Query.__init__)
+        args = [name for name in sig.parameters if name != "self"]
+        if field_name not in args:
+            raise KeyError(f"Cannot search '{field_name}' - no such attribute")
+        items = [
+            item
+            for item in self.data
+            if getattr(item, field_name, None) == search_value
+        ]
+        if not items:
+            raise ValueError(f"No {field_name} found called '{search_value}'")
+        if len(items) > 1:
+            removal_scope = (
+                f"all {len(items)} matches" if drop_all else "only the first match"
+            )
+            readout.warn(
+                f"\nWARNING: {len(items)} duplicate matches found; {removal_scope} will be dropped \n -> ",
+                end="",
+            )
+        if not drop_all:
+            items = items[:1]
+        for item in items:
+            self.__remove(item)
+
+    def remove(
+        self,
+        search_value: str | Query,
+        field_name: str = "df_name",
+        drop_all: bool = True,
+    ) -> None:
+        """Remove a Query or matching Query objects; equivalent to ``drop``.
+
+        A Query argument removes that object. A string argument is matched
+        against ``field_name``; duplicate matches are warned about and
+        ``drop_all`` determines whether all or only the first match is removed.
+
+        Args:
+            search_value (str | Query): Query object to remove, or value to search for.
+            field_name (str, optional): Query field to search for a string value. Defaults to "df_name".
+            drop_all (bool, optional): Whether to remove every match. Defaults to True.
+        """
+        self.drop(search_value=search_value, field_name=field_name, drop_all=drop_all)
 
     def copy(self) -> QueryList:
         """Copies the QueryList."""
@@ -352,6 +589,14 @@ class QueryList(UserList[Query]):
         return copy
 
     def convert_to_dict(self) -> dict[str, str]:
+        """Return the queries' SQL strings keyed by their DataFrame names.
+
+        If multiple Queries have the same ``df_name``, later entries receive
+        a numbered suffix that avoids collisions with existing names.
+
+        Returns:
+            dict[str, str]: Mapping from unique DataFrame names to SQL strings.
+        """
         original_names = [item_pack.df_name for item_pack in self]
         item_dict = {}
 

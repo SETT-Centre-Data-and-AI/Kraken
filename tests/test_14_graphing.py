@@ -195,15 +195,21 @@ def test_graph_orders_numeric_bins_from_negative_to_positive(
     ]
     assert result.figure is not None
     assert list(result.figure.layout.xaxis.categoryarray) == expected_order
-    assert list(result.figure.data[0].x) == expected_order
+    assert list(result.figure.data[0].x) == [
+        "[-21, -14)",
+        "[-7, 0)",
+        "[0, 7)",
+        "[7, 14)",
+        "[14, 21)",
+    ]
 
 
 def test_graph_retains_empty_numeric_bin_categories() -> None:
     source = pd.DataFrame(
         {
-            "value": [-15, -1, 1, 8, 15],
-            "amount": [1, 2, 3, 4, 5],
-            "group": ["a", "a", "a", "a", "a"],
+            "value": [-15, -5, -1, 1, 8, 15],
+            "amount": [1, -2, 2, 3, 4, 5],
+            "group": ["a", "a", "a", "a", "a", "a"],
         }
     )
 
@@ -228,6 +234,8 @@ def test_graph_retains_empty_numeric_bin_categories() -> None:
         "[14, 21)",
     ]
     assert "[-14, -7)" not in result.figure.data[0].x
+    zero_bin_index = list(result.figure.data[0].x).index("[-7, 0)")
+    assert result.figure.data[0].y[zero_bin_index] == 0
 
 
 @pytest.mark.parametrize("width", [0, -1])
@@ -278,7 +286,7 @@ def test_prepare_graph_preserves_result_categories_but_converts_plot_data() -> N
     )
 
     assert str(prepared.data["age"].dtype) == "category"
-    assert str(prepared.plot_data["age"].dtype) == "object"
+    assert pd.api.types.is_string_dtype(prepared.plot_data["age"])
 
 
 def test_prepare_graph_rejects_unknown_graph_and_columns() -> None:
@@ -1571,7 +1579,10 @@ def test_graph_density_drops_nullable_numeric_values() -> None:
 
 def test_graph_density_drops_nat_before_numeric_conversion() -> None:
     source = pd.DataFrame(
-        {"date": pd.to_datetime(["2020-01-01", "2021-01-01", None, "2022-01-01"])}
+        {
+            "date": pd.to_datetime(["2020-01-01", "2021-01-01", None, "2022-01-01"]),
+            "amount": [1.0, 3.0, None, 2.0],
+        }
     )
 
     result = graph(
@@ -1587,6 +1598,19 @@ def test_graph_density_drops_nat_before_numeric_conversion() -> None:
     assert plotted_dates.min() > pd.Timestamp("2019-01-01")
     assert plotted_dates.max() < pd.Timestamp("2023-01-01")
     assert result.data["date"].isna().sum() == 1
+
+    result_2d = graph(
+        source,
+        x="date",
+        y="amount",
+        graph="density",
+        convert_dates=False,
+        show=False,
+    )
+    assert result_2d.figure is not None
+    plotted_2d_dates = pd.to_datetime(result_2d.figure.data[0].x)
+    assert plotted_2d_dates.min() > pd.Timestamp("2019-01-01")
+    assert plotted_2d_dates.max() < pd.Timestamp("2023-01-01")
 
 
 def test_graph_density_drops_null_x_y_pairs_together() -> None:
@@ -1780,8 +1804,10 @@ def test_distribution_graphs_convert_numeric_string_y_and_warn(
 
     assert pd.api.types.is_integer_dtype(result.data["value"])
     assert result.data["value"].tolist() == [1, 2, 3]
+    source_dtype = source["value"].dtype
     assert (
-        "column 'value' converted from 'object' to 'int64'" in capsys.readouterr().out
+        f"column 'value' converted from '{source_dtype}' to 'int64'"
+        in capsys.readouterr().out
     )
 
 
@@ -2027,7 +2053,8 @@ def test_date_histogram_preserves_timezone_during_aggregation() -> None:
         show=False,
     )
 
-    assert str(result.data["date"].dtype) == "datetime64[ns, Europe/London]"
+    assert isinstance(result.data["date"].dtype, pd.DatetimeTZDtype)
+    assert str(result.data["date"].dt.tz) == "Europe/London"
     assert all(value.tzinfo is not None for value in result.data["date"])
 
 

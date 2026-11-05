@@ -22,10 +22,11 @@ def extract_spreadsheets(
     Args:
         filepaths (str | list[str]): Path or list of paths to spreadsheet files or
             directories of spreadsheet files
-        clean_df (bool): Uses pandas' numpy_nullable reader backend by default for
-            CSV/Excel, avoiding float intermediates for nullable signed integers.
-            False leaves backend selection to pandas. Explicit dtype/backend options
-            are honored. Parquet retains its stored schema regardless of this flag.
+        clean_df (bool): If True (default), CSV and Excel files use pandas' nullable
+            dtypes so blank cells do not force integer columns to become floats.
+            Parquet keeps its stored types. If False, pandas chooses the CSV/Excel
+            types as usual. Explicit dtype, dtype_backend, and converter options take
+            precedence.
         kwargs: Forwarded to the relevant pandas reader. CSV/Excel default to
             keep_default_na=False and na_values=[""], preserving literal NA strings
             but treating blanks as missing. Override these defaults as needed.

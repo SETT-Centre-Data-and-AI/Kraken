@@ -792,6 +792,10 @@ def prepare_graph(
                     *group_columns,
                 ]
 
+            row_count_column = "_kraken_row_count"
+            while row_count_column in prepared_df.columns:
+                row_count_column += "_"
+            prepared_df[row_count_column] = 1
             prepared_df = (
                 prepared_df.groupby(
                     group_values,
@@ -799,8 +803,16 @@ def prepare_graph(
                     dropna=False,
                     sort=False,
                 )
-                .agg({y: lambda values: aggregate_y(effective_y_agg, values)})
+                .agg(
+                    {
+                        y: lambda values: aggregate_y(effective_y_agg, values),
+                        row_count_column: "sum",
+                    }
+                )
                 .reset_index()
+            )
+            prepared_df = prepared_df[prepared_df[row_count_column] > 0].drop(
+                columns=row_count_column
             )
 
             if discard_null_aggs and y:

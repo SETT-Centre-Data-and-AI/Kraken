@@ -19,22 +19,6 @@ Wrapping around packages like `keyring`, `sqlalchemy`, `pyodbc`, `pandas`, `Plot
 * [Installation and Setup Guide](./docs/installation-and-setup-guide.md)
 * [Usage Guide](./docs/usage-guide.md)
 
-# Migrating to v1.7 graphing
-
-`graph()` now returns a `GraphResult` for every call. Code that previously requested an aggregation table with `return_results=True` should read the returned `data` field instead. Interactive Plotly figures are available through `figure`:
-
-```python
-# Before Kraken v1.7
-data = kraken.graph(df, x="category", graph="bar", return_results=True)
-
-# Kraken v1.7
-result = kraken.graph(df, x="category", graph="bar")
-data = result.data
-figure = result.figure
-```
-
-The `return_results` argument is retained temporarily as a deprecated no-op. Newly added interactive options, including `show`, `width`, `height`, facets, hover columns, and confidence intervals, are keyword-only.
-
 # Quickstart Example
 ```
 pip install datakraken

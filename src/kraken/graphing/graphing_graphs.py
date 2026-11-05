@@ -322,15 +322,20 @@ def _graph_scatter(
     return figure
 
 
-def _numeric_density_values(series: pd.Series) -> tuple[np.ndarray, bool]:
+def _numeric_density_values(series: pd.Series) -> tuple[np.ndarray, str | None]:
     series = series.loc[series.notna()]
     is_datetime = pd.api.types.is_datetime64_any_dtype(series.dtype)
+    datetime_unit = None
+    if is_datetime:
+        datetime_unit = getattr(series.dtype, "unit", None)
+        if datetime_unit is None:
+            datetime_unit = np.datetime_data(series.dtype)[0]
     values = (
         series.astype("int64").to_numpy(dtype=float)
         if is_datetime
         else pd.to_numeric(series, errors="coerce").to_numpy(dtype=float)
     )
-    return values[np.isfinite(values)], is_datetime
+    return values[np.isfinite(values)], datetime_unit
 
 
 def _density_grid(values: np.ndarray, points: int = 200) -> np.ndarray:
@@ -352,7 +357,7 @@ def _graph_density(
             if name == _MISSING_GROUP_LABEL
             else KRAKEN_COLOUR_SEQUENCE[colour_index % len(KRAKEN_COLOUR_SEQUENCE)]
         )
-        x_values, x_is_datetime = _numeric_density_values(group[prepared.x])
+        x_values, x_datetime_unit = _numeric_density_values(group[prepared.x])
         if x_values.size < 2 or np.unique(x_values).size < 2:
             raise InsufficientGraphDataError(
                 f"Graph 'density' requires at least two finite, distinct x values"
@@ -370,7 +375,11 @@ def _graph_density(
                 ) from exc
             kde.set_bandwidth(kde.factor * bw_adjust)
             x_grid = _density_grid(x_values)
-            plotted_x = pd.to_datetime(x_grid) if x_is_datetime else x_grid
+            plotted_x = (
+                pd.to_datetime(x_grid, unit=x_datetime_unit)
+                if x_datetime_unit
+                else x_grid
+            )
             figure.add_trace(
                 go.Scatter(
                     x=plotted_x,
@@ -393,9 +402,10 @@ def _graph_density(
 
         paired_values = group[[prepared.x, prepared.y]].dropna()
         paired_x_series = paired_values[prepared.x]
+        x_datetime_unit = _numeric_density_values(paired_x_series)[1]
         numeric_x = (
             paired_x_series.astype("int64").to_numpy(dtype=float)
-            if x_is_datetime
+            if x_datetime_unit
             else pd.to_numeric(paired_x_series, errors="coerce").to_numpy(dtype=float)
         )
         numeric_y = pd.to_numeric(paired_values[prepared.y], errors="coerce").to_numpy(
@@ -428,7 +438,9 @@ def _graph_density(
         y_grid = _density_grid(paired_y, points=80)
         mesh_x, mesh_y = np.meshgrid(x_grid, y_grid)
         density = kde(np.vstack([mesh_x.ravel(), mesh_y.ravel()])).reshape(mesh_x.shape)
-        plotted_x = pd.to_datetime(x_grid) if x_is_datetime else x_grid
+        plotted_x = (
+            pd.to_datetime(x_grid, unit=x_datetime_unit) if x_datetime_unit else x_grid
+        )
         figure.add_trace(
             go.Contour(
                 x=plotted_x,
