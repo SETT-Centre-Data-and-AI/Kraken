@@ -1,8 +1,7 @@
-import math
 from typing import Any
 
 import numpy as np
-from pandas import DataFrame, notnull
+from pandas import DataFrame, isna, notnull
 from pandas.api.types import is_object_dtype, is_string_dtype
 from sqlalchemy.types import FLOAT, VARCHAR
 
@@ -74,17 +73,20 @@ def _convert_dtypes(
     float_remap = {c: FLOAT for c in df.columns[df.dtypes == "float"].tolist()}
 
     varchar_remap: dict[str, int | VARCHAR] = {}
-    for c in df.columns[df.dtypes == "object"].tolist():
+    for c in df.columns[
+        [is_object_dtype(dtype) or is_string_dtype(dtype) for dtype in df.dtypes]
+    ].tolist():
         # Convert bools in object columns to strings
         df[c] = df[c].replace({True: "True", False: "False"})
 
         # Set VARCHAR(length) if all values are null
-        if math.isnan((df[c].str.len().max())):
+        max_length = df[c].str.len().max()
+        if isna(max_length):
             varchar_remap[c] = VARCHAR(varchar_length) if varchar_length else VARCHAR(1)
             continue
 
         # Caculate max string length
-        max_length = int(df[c].str.len().max())
+        max_length = int(max_length)
 
         # Set VARCHAR(length) if overwrite provided
         if varchar_length:

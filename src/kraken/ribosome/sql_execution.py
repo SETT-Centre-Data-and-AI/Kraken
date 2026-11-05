@@ -8,7 +8,7 @@ from typing import Any, Literal
 from pandas import DataFrame
 
 from kraken.classes.pack_lists import QueryList, ResultList
-from kraken.classes.packs import Result
+from kraken.classes.packs import Query, Result
 from kraken.connection.connector import create_connector
 from kraken.support.progress import Progress
 from kraken.support.readout import readout
@@ -53,8 +53,12 @@ def execute(
         username (str, optional): If blank, Kraken will use the default username for the given alias. Otherwise,
             Kraken will fetch saved credentials for the given username/database alias pair. Defaults to None.
         batch_size (int): Downloads rows in batches. Use `batch_size=0` to fetch all data without batching.
-        clean_df (bool): Preserves fetched scalar types during DataFrame construction, including
-            nullable integers/booleans without a float intermediate. False uses ordinary pandas inference.
+        clean_df (bool): If True (default), Kraken tries to preserve SQL result types,
+            including nullable integers and booleans, without changing values. It uses
+            database type information when available and checks it against the returned
+            values; if the types do not match, it infers from the values instead. Values
+            that cannot be represented safely are left unchanged. If False, pandas
+            chooses types as usual.
         isolation_level (Literal["SERIALIZABLE", "REPEATABLE READ", "READ COMMITTED", "READ UNCOMMITTED", "AUTOCOMMIT"] | None):
             SQL Alchemy isolation level. Defaults to None. If errors are raised related to not being able to perform
             queries within transactions, (for example as typical with Synapse databases), try using "AUTOCOMMIT".
@@ -127,7 +131,7 @@ def create_db_sql_mapping(
 
 
 def execute_sql(
-    query_list: QueryList,
+    query_list: Query | QueryList,
     username: str | None = None,
     clean_df: bool = True,
     batch_size: int | None = None,
@@ -145,15 +149,19 @@ def execute_sql(
 ) -> ResultList:
     """
     Summary:
-        Takes a QueryList of Query objects, as prepared and output by extract_sql(). Executes this list against the
-        databases set within the Query objects. Returns a list of Results (class = ResultList).
+        Takes a Query or QueryList of Query objects, as prepared and output by extract_sql(). Executes them against
+        the databases set within the Query objects. Returns a list of Results (class = ResultList).
 
     Args:
-        query_list (list[Query]): List of QueryList of Query objects prepared by extract_sql()
+        query_list (Query | QueryList): Query or collection of Query objects prepared by extract_sql().
         username (str, optional): Overriding username to fetch database credentials. Defaults to None. WARNING:
             Kraken will attempt to use this username to execute all queries.
-        clean_df (bool): Preserves fetched scalar types during DataFrame construction, including
-            nullable integers/booleans without a float intermediate. False uses ordinary pandas inference.
+        clean_df (bool): If True (default), Kraken tries to preserve SQL result types,
+            including nullable integers and booleans, without changing values. It uses
+            database type information when available and checks it against the returned
+            values; if the types do not match, it infers from the values instead. Values
+            that cannot be represented safely are left unchanged. If False, pandas
+            chooses types as usual.
         batch_size (int): Downloads rows in batches. Use `batch_size=0` to fetch all data without batching.
         concurrent (bool): If True, executes all SQL files concurrently. Queries within each SQL file will still
             execute sequentially. Defaults to False.
@@ -166,6 +174,9 @@ def execute_sql(
     Returns:
         ResultList: List of Results
     """
+    if isinstance(query_list, Query):
+        query_list = QueryList([query_list])
+
     readout.print(f"Executing {len(query_list)} SQL Queries...", end="")
     execution_start = datetime.now()
     db_sql_mapping = create_db_sql_mapping(query_list=query_list)
@@ -320,21 +331,23 @@ def __execute_all_queries(
 
     if concurrent:
         readout.print("\n", end="")
-        with Progress(
-            header="  - Executing Files Concurrently",
-            auto_update=True,
-            suffix=f"0/{total_queries} Queries",
-            auto_update_interval=0.5,
-        ) as concurrent_progress:
-            with ThreadPoolExecutor() as executor:
-                futures = {
-                    executor.submit(
-                        _process_sql_file, file_key, query_list, concurrent
-                    ): file_key
-                    for file_key, query_list in db_sql_mapping.items()
-                }
-                for future in as_completed(futures):
-                    result_list.extend(future.result())
+        with (
+            Progress(
+                header="  - Executing Files Concurrently",
+                auto_update=True,
+                suffix=f"0/{total_queries} Queries",
+                auto_update_interval=0.5,
+            ) as concurrent_progress,
+            ThreadPoolExecutor() as executor,
+        ):
+            futures = {
+                executor.submit(
+                    _process_sql_file, file_key, query_list, concurrent
+                ): file_key
+                for file_key, query_list in db_sql_mapping.items()
+            }
+            for future in as_completed(futures):
+                result_list.extend(future.result())
 
         concurrent_progress.finish()
 

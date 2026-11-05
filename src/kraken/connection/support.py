@@ -1,8 +1,34 @@
-import sqlalchemy
+from collections.abc import Sequence
+
 import pyodbc
+import sqlalchemy
+from pandas import DataFrame
+
+from kraken.connection.dtype_mapping import (
+    ColumnKind,
+    analyse_column,
+)
 
 ### Connection ###
 DEFAULT_ARRAYSIZE = 10_000
+
+
+def _apply_column_dtypes(
+    df: DataFrame, column_kinds: Sequence[ColumnKind | None] | None = None
+) -> DataFrame:
+    """Set each column's dtype in place, in this order: the kind resolved from cursor
+    metadata (if it conforms to the values), then value-based inference."""
+    for position in range(len(df.columns)):
+        column = df.iloc[:, position]
+        kind = (
+            column_kinds[position]
+            if column_kinds and position < len(column_kinds)
+            else None
+        )
+        converted = analyse_column(column, kind)
+        if converted is not None:
+            df.isetitem(position, converted.array)
+    return df
 
 
 def _split_pyodbc_connection_string(connection_string: str) -> dict[str, str]:
@@ -49,11 +75,7 @@ def _check_execution_error(error: Exception, platform: str = "") -> str:
     if isinstance(error, (pyodbc.ProgrammingError, sqlalchemy.exc.ProgrammingError)):
         e_lower = error.__str__().lower()
         # mssql DECLARE variable error
-        if (
-            platform == "mssql"
-            and "must declare" in e_lower
-            and "variable" in e_lower
-        ):
+        if platform == "mssql" and "must declare" in e_lower and "variable" in e_lower:
             return (
                 "If using DECLARE to set variables in separate queries in MSSQL, "
                 + "ensure the `--$Split=False` "

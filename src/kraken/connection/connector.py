@@ -1,16 +1,19 @@
-import sys
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any, Generic, Literal, Protocol, Type, TypeVar, runtime_checkable
+from typing import Any, Generic, Literal, Protocol, Self, TypeVar, runtime_checkable
 
-import pandas as pd
 import pyodbc  # type: ignore[import-not-found]
 import sqlalchemy as sa
 from pandas import DataFrame
 from sqlalchemy.engine.url import URL
 
+from kraken.connection.dtype_mapping import (
+    ColumnKind,
+    resolve_column_kinds,
+)
 from kraken.connection.support import (
     DEFAULT_ARRAYSIZE,
+    _apply_column_dtypes,
     _check_execution_error,
     _compile_pyodbc_connection_string,
     _split_pyodbc_connection_string,
@@ -30,11 +33,6 @@ from kraken.support.support import (
     abbreviate_number,
 )
 from kraken.support.warnings import DuplicateColumnWarning
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
 
 
 @runtime_checkable
@@ -266,9 +264,12 @@ class Connector(ABC, Generic[TConn, TCursor]):
             -   close (bool): If True, closes the connection after executing. Defaults to None, using the Connector default (Connector.autoclose).
             -   batch_size (int): Downloads data in batches. Uses current Connector.batch_size if None. Set to 0 to
                 download all data without batching.
-            -   clean_df (bool): Preserves fetched scalar types during DataFrame construction,
-                using nullable integer/boolean dtypes where needed without a float intermediate.
-                Float values remain floats. False uses ordinary pandas inference.
+            -   clean_df (bool): If True (default), Kraken tries to preserve SQL result types,
+                including nullable integers and booleans, without changing values. It uses
+                database type information when available and checks it against the returned
+                values; if the types do not match, it infers from the values instead. Values
+                that cannot be represented safely are left unchanged. If False, pandas
+                chooses types as usual.
             -   check_column_duplicates (bool): Checks DataFrame for duplicate column names and throws warning.
             -   header_indent (str): Prefix each readout with an indent (e.g. ' -> ')
             -   progress (bool): If True, activates query progress bar. Switching to False may save a little
@@ -428,37 +429,17 @@ class Connector(ABC, Generic[TConn, TCursor]):
             self.multiset_supported = callable(getattr(self.cursor, "nextset", None))
 
     def _process_dataframe(
-        self, df: DataFrame, clean_df: bool, check_column_duplicates: bool
+        self,
+        df: DataFrame,
+        clean_df: bool,
+        check_column_duplicates: bool,
+        column_kinds: Sequence[ColumnKind | None] | None = None,
     ) -> DataFrame | None:
         if df is None:
             return
 
         if clean_df:
-            for position in range(len(df.columns)):
-                column = df.iloc[:, position]
-                raw_values = column.to_numpy()
-                present = pd.notna(raw_values)
-                nullable = not present.all()
-                values = raw_values[present] if nullable else raw_values
-                scalar_type = pd.api.types.infer_dtype(values, skipna=True)
-                converted: pd.Series[Any]
-                if scalar_type == "integer":
-                    dtype: Literal["Int64", "int64", "UInt64", "uint64"]
-                    minimum, maximum = values.min(), values.max()
-                    if -(2**63) <= minimum and maximum < 2**63:
-                        dtype = "Int64" if nullable else "int64"
-                    elif 0 <= minimum and maximum < 2**64:
-                        dtype = "UInt64" if nullable else "uint64"
-                    else:
-                        continue
-                    converted = column.astype(dtype)
-                elif scalar_type == "boolean":
-                    converted = column.astype("boolean" if nullable else "bool")
-                elif scalar_type in ("mixed-integer", "mixed-integer-float"):
-                    continue
-                else:
-                    converted = column.infer_objects()
-                df.isetitem(position, converted.array)
+            _apply_column_dtypes(df, column_kinds)
         if check_column_duplicates and df.columns.has_duplicates:
             dupe_cols = df.columns[df.columns.duplicated()].to_list()
             readout.warn(
@@ -470,6 +451,14 @@ class Connector(ABC, Generic[TConn, TCursor]):
 
     def _fetch_columns(self) -> list[str]:
         return [column[0] for column in self.cursor.description]  # type: ignore
+
+    def _fetch_column_kinds(self) -> list[ColumnKind | None]:
+        """Resolve column kinds from the cursor's type metadata. Never raises."""
+        try:
+            driver = type(self.cursor).__module__.partition(".")[0]
+            return resolve_column_kinds(self.cursor.description, driver)  # type: ignore
+        except Exception:  # noqa: BLE001
+            return []
 
     def _fetch_rows(self) -> list[tuple]:
         if self.batch_size:
@@ -503,6 +492,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
                 progress.update()
 
                 columns = self._fetch_columns()
+                column_kinds = self._fetch_column_kinds() if clean_df else []
                 rows: list[tuple] = []
 
                 while True:
@@ -528,6 +518,7 @@ class Connector(ABC, Generic[TConn, TCursor]):
                         df=df,
                         clean_df=clean_df,
                         check_column_duplicates=check_column_duplicates,
+                        column_kinds=column_kinds,
                     )
 
                     if df is not None:
@@ -654,9 +645,12 @@ class SaConnector(
             close (bool): If True, closes the connection after executing. Defaults to None, using the Connector default (Connector.autoclose).
             batch_size (int): Downloads data in batches. Uses current Connector.batch_size if None. Set to 0 to
                 download all data without batching.
-            clean_df (bool): Preserves fetched scalar types during DataFrame construction,
-                using nullable integer/boolean dtypes where needed without a float intermediate.
-                Float values remain floats. False uses ordinary pandas inference.
+            clean_df (bool): If True (default), Kraken tries to preserve SQL result types,
+                including nullable integers and booleans, without changing values. It uses
+                database type information when available and checks it against the returned
+                values; if the types do not match, it infers from the values instead. Values
+                that cannot be represented safely are left unchanged. If False, pandas
+                chooses types as usual.
             check_column_duplicates (bool): Checks DataFrame for duplicate column names and throws warning.
             header_indent (str): Prefix each readout with an indent (e.g. ' -> ')
             progress (bool): If True, activates query progress bar. Switching to False may save a little
@@ -828,7 +822,7 @@ def create_connector(
     )
     config = get_platform_config(credentials.platform)
 
-    connector: Type[SaConnector | PyoConnector]
+    connector: type[SaConnector | PyoConnector]
     if config.sql_library == "sqlalchemy":
         connector = SaConnector
     elif config.sql_library == "pyodbc":

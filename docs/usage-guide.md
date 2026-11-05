@@ -14,11 +14,11 @@ The following examples will use a Jupyter Notebook, imaginary SQL, and a MSSQL d
   - [Inspecting DataFrames](#inspecting-dataframes)
   - [Running the 'Ribosome' (single-line control)](#running-the-ribosome-single-line-control)
   - [Extracting Spreadsheets](#extracting-spreadsheets)
-    - [Data Fidelity](#data-fidelity)
+  - [Data Fidelity](#data-fidelity)
   - [Uploading DataFrames](#uploading-dataframes)
   - [Readouts](#readouts)
   - [Stats \& Graphing](#stats--graphing)
-    - [Migrating graph calls to Kraken v1.7](#migrating-graph-calls-to-kraken-v17)
+    - [Migrating graph calls to Kraken v1.7+](#migrating-graph-calls-to-kraken-v17)
 
 ## Save Database(s)
 See [Installation and Setup Guide](./installation-and-setup-guide.md) to save database connections.
@@ -162,7 +162,7 @@ When used at the `Connector` level, commit behaviour may not be controlled with 
 Here's an example using a Microsoft Azure Synapse SQL Data Warehouse that would fail without specifying the isolation level:
 
 ```sql
---$Database = BEDROCKDEV
+--$Database = WAREHOUSE
 --$Dataframe = CreateTestTable
 --$Split=FALSE
 --$IsolationLevel=AUTOCOMMIT
@@ -261,17 +261,21 @@ imports = kraken.extract_spreadsheets(filepaths="export_folder")
 
 The resulting `imports` can be manipulated as previously outlined for `ResultList` and `Result` objects.
 
-### Data Fidelity
+## Data Fidelity
 
-Kraken preserves known scalar types and values rather than choosing a type solely because values happen to be whole numbers or timestamps happen to be midnight. The available guarantees depend on the source and file format:
+Kraken uses database type information and value checks to select lossless scalar representations. The available guarantees depend on the source and file format:
 
-| Path | Preserved Behavior | Limits |
+| Path | Preserved Behaviour | Limits |
 | --- | --- | --- |
-| SQL extraction, `clean_df=True` | Driver-returned integers are constructed without a float intermediate; nullable signed/unsigned integers and booleans receive suitable dtypes. Floats stay floats, `Decimal` values stay exact objects, and dates remain distinct from datetimes. | Guarantees start with values returned by the driver, not the original SQL schema. Empty/all-null columns have no recoverable type without source metadata. Mixed integer/float columns and integers outside 64-bit ranges stay objects to avoid rounding. |
+| SQL with `clean_df=True` | By default, Kraken uses the database's type information when available and checks it against the returned values. This helps keep nullable integers and booleans in their proper types, preserve exact decimal values, and retain types even for empty results when the driver reports them. | Drivers provide different levels of type detail, and Kraken cannot recover precision already lost by a driver. If metadata is unavailable or does not fit the values, Kraken falls back to value-based inference. Values that cannot be represented safely are left unchanged rather than rounded. Set `clean_df=False` to let pandas choose types as usual (not recommended). |
 | CSV export/import | Exported datetimes include a time component even at midnight; supported timestamp fractions and offsets are retained. Nullable integers are written without a `.0` suffix. Clean import uses nullable reader inference instead of repairing rounded floats afterward. | CSV has no column schema. Supply import types for identifiers, exact decimals and unsigned integers above the signed range, and request timestamp parsing explicitly. Empty strings and missing values both export as blank fields by default. Entirely blank rows may be skipped by the reader. |
-| XLSX export/import | Date and datetime cells have distinct display formats, including time for midnight datetimes. Strings beginning with `=` stay literal text; URLs are not automatically converted to hyperlinks. Explicit import types are honored. | Excel numeric precision is limited to roughly 15 significant digits. Datetime serialization/readback can reduce subsecond precision; the seconds-only display format is not itself evidence of truncation. Timezone-aware datetimes are rejected, not silently stripped. Excel import still infers types, including date versus datetime. |
+| XLSX export/import | Date and datetime cells have distinct display formats, including time for midnight datetimes. Strings beginning with `=` stay literal text; URLs are not automatically converted to hyperlinks. Explicit import types are honoured. | Excel numeric precision is limited to roughly 15 significant digits. Datetime serialisation/readback can reduce subsecond precision; the seconds-only display format is not itself evidence of truncation. Timezone-aware datetimes are rejected, not silently stripped. Excel import still infers types, including date versus datetime. |
 
-For CSV/Excel imports, `clean_df=True` now defaults to pandas' `numpy_nullable` backend. This can produce `Int64`, `Float64`, `boolean` and `string` extension dtypes rather than their legacy NumPy/object counterparts. Caller-supplied `dtype`, `dtype_backend` and converters take precedence. `clean_df=False` opts out of this default and, for SQL extraction, returns to ordinary pandas inference, which can represent integers with nulls as floats and lose large-integer precision. The standalone `check_df_integers()` helper remains an explicitly requested heuristic, not a schema-preservation guarantee.
+SQL datetime conversion preserves fractional seconds and timezone information. If a column combines dates outside the nanosecond range with timestamps that require nanosecond precision, or incompatible timezones, Kraken retains its object values rather than truncating or normalising them. NumPy integers are checked before float conversion; wider NumPy floats remain objects when float64 would lose precision.
+
+When metadata is missing or incompatible, finite whole-number floats within `+/-2**53` may become nullable integers. Negative zero (`-0.0`) stays floating point so its sign is preserved. Compatible floating-point metadata keeps whole-number values floating point. Missing-value positions are preserved, although pandas may use a different missing-value sentinel.
+
+For CSV and Excel imports, `clean_df=True` (the default) uses pandas' nullable types so blank cells do not force integer columns to become floats. You may see types such as `Int64`, `Float64`, `boolean`, and `string`. Explicit `dtype`, `dtype_backend`, and converter options take precedence. `clean_df=False` lets pandas choose types as usual; for SQL results, it also opts out of Kraken's type-preservation behaviour. The separate `check_df_integers()` helper is an optional heuristic, not a guarantee of the source schema.
 
 CSV/Excel import defaults preserve literal strings such as `NA`, `NULL` and `nan`, but treat blank cells as missing. Declare types and null conventions when those distinctions matter:
 
@@ -406,7 +410,7 @@ Every call returns a `GraphResult`. Its `figure` field contains the editable Plo
 
 Rendered figures use Kraken's Plotly theme: a high-contrast blue/orange-led sequence with 24 discrete colours before cycling, neutral grey for `(Missing)`, human-readable aggregate and hover labels, concise facet headings, restrained grids, and consistent typography and spacing. Categorical x labels on bar and stacked graphs are ordered case-insensitively and alphabetically, while explicitly ordered Pandas categoricals and numeric interval bins retain their declared order. Renderer-specific defaults keep histogram bins contiguous, soften dense scatter and distribution marks, show an internal box and mean line on violins, associate grouped regression lines with their point colours, and give timelines enough vertical space while retaining responsive width. Passing `alpha`, labels, or explicit dimensions continues to override the corresponding visual defaults.
 
-### Migrating graph calls to Kraken v1.7
+### Migrating graph calls to Kraken v1.7+
 
 Before Kraken v1.7, `graph()` returned `None` by default or a prepared `DataFrame` when `return_results=True`. Kraken v1.7 always returns `GraphResult`:
 

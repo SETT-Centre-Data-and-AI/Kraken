@@ -1,3 +1,34 @@
+## v1.8.3 (2026-11-05)
+
+### Feat
+
+- **fidelity-hardening**: preserve exact values during SQL dtype inference - hardening for datetime precision and numeric values, with object fallback
+
+## v1.8.2 (2026-11-05)
+
+### Feat
+
+- **pack_lists.py**: support keyed removal and preserve slice types
+
+## v1.8.1 (2026-11-05)
+
+### Feat
+
+- **pack_lists.py**: support keyed removal and preserve slice types
+
+## v1.8.0 (2026-10-14)
+
+### Feat
+
+- **execute_sql**: can accept an individual Query
+- **pack_lists**: added .drop and .remove commands to remove referenced items
+- **pack_lists**: added ability to index directly with list['df_name'] or list[0] to call by index
+- **excel-export**: exports with excel tables if .xlsx
+
+### Refactor
+
+- **pandas**: refactoring to support pandas 2 & 3
+
 ## v1.7.4 (2026-10-02)
 
 ### Fix

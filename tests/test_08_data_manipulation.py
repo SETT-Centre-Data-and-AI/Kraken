@@ -60,7 +60,7 @@ def test_date_converter_leaves_numpy_string_categories_unchanged() -> None:
         "Respiratory",
         "Respiratory",
     ]
-    assert converted["specialty"].dtype == object
+    assert pd.api.types.is_string_dtype(converted["specialty"])
 
 
 def test_date_converter_converts_numpy_string_dates() -> None:
@@ -70,7 +70,7 @@ def test_date_converter_converts_numpy_string_dates() -> None:
 
     converted = date_converter_df(source, readouts=False)
 
-    assert str(converted["event_date"].dtype) == "datetime64[ns]"
+    assert pd.api.types.is_datetime64_any_dtype(converted["event_date"])
     assert converted["event_date"].tolist() == [
         pd.Timestamp("2025-01-01"),
         pd.Timestamp("2025-02-01"),
@@ -84,11 +84,21 @@ def test_date_converter_converts_sql_datetime_strings_with_microseconds() -> Non
 
     converted = date_converter_df(source, readouts=False)
 
-    assert str(converted["event_date"].dtype) == "datetime64[ns]"
+    assert pd.api.types.is_datetime64_any_dtype(converted["event_date"])
     assert converted["event_date"].tolist() == [
         pd.Timestamp("2023-10-19"),
         pd.Timestamp("2023-10-20 12:30:15.123456"),
     ]
+
+
+def test_date_converter_readout_reports_resulting_datetime_dtype(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source = pd.DataFrame({"event_date": ["2025-01-01"]})
+
+    converted = date_converter_df(source)
+
+    assert f"converted to {converted['event_date'].dtype}" in capsys.readouterr().out
 
 
 def test_examine_always_returns_stats_pack() -> None:

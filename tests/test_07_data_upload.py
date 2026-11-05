@@ -236,6 +236,17 @@ def test_convert_dtypes_with_custom_varchar_length(
     assert str(mapping["mixed_column"]) == str(VARCHAR(10))
 
 
+@pytest.mark.parametrize("varchar_length, expected_length", [(None, 1), (10, 10)])
+def test_convert_dtypes_all_null_nullable_string(
+    varchar_length: int | None, expected_length: int
+) -> None:
+    source = pd.DataFrame({"text": pd.Series([pd.NA, pd.NA], dtype="string")})
+
+    mapping = _convert_dtypes(source, varchar_length=varchar_length)
+
+    assert str(mapping["text"]) == str(VARCHAR(expected_length))
+
+
 ### Test that headers can be converted to uppercase
 def test_convert_headers_upper(mixed_type_dataframe: pd.DataFrame) -> None:
     expected_columns = ["INT_COLUMN", "FLOAT_COLUMN", "STR_COLUMN", "MIXED_COLUMN"]
@@ -550,7 +561,7 @@ def test_upload_dataframe_dtype_and_varchar_length(
     varchar_length = string_row["data_length"]
 
     if connector.platform == "duckdb":
-        assert varchar_length is None
+        assert pd.isna(varchar_length)
     else:
         assert int(varchar_length) == 15
 
